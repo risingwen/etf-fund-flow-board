@@ -55,15 +55,15 @@
     <section class="part" id="part3"><h2>日度资金全景</h2><p class="sub" id="dailyMeta"></p>
       <section class="chart-wrap"><div class="chart tall" id="chartDAmt"></div></section>
       <section class="chart-wrap"><div class="chart tall" id="chartDNf"></div></section>
-      <footer>成交额为二级市场买卖金额。增量净流入按每只 ETF 的相邻交易日份额差乘以当日单位净值，再加总为亿元。当前篮子在 2026-10-15 调整，历史段为回溯数据。</footer>
+      <footer>成交额为二级市场买卖金额。增量净流入按每只 ETF 的相邻交易日份额差乘以当日单位净值，再加总为亿元。当前篮子在 2026-10-15 调整，历史段为回溯数据。<a href="./audit/turnover-2026-11-04.csv" download>下载 11 月 4 日成交额逐只对账（CSV）</a></footer>
     </section>
     <section class="part" id="broad"><h2>全市场宽基分类</h2><p class="sub" id="broadMeta"></p>
       <section class="chart-wrap"><div class="chart broad" id="chartBroad"></div></section>
-      <section class="table-wrap"><h3>快照末月 · 各类宽基日度净流入</h3>
-        <p class="sub">单位为亿元。红色为净申购，绿色为净赎回，颜色深浅按全表绝对值比较。</p>
+      <section class="table-wrap"><h3>最近 22 个交易日 · 各类宽基日度净流入</h3>
+        <p class="sub">单位为亿元。红色为净申购，绿色为净赎回，颜色深浅按同一类别的绝对值比较。</p>
         <div class="tscroll" id="broadHeat" tabindex="0" aria-label="宽基分类净流入热力表"></div>
       </section>
-      <footer>宽基分类沿用上游历史快照，采用份额变动乘以收盘价，与上方 20 只篮子的净值口径有别。</footer>
+      <footer>截至 2026-10-23 为上游历史快照，按收盘价估算。自 2026-10-26 起，按沪深交易所 ETF 目录匹配标的指数，逐只以相邻交易日份额变动乘当日单位净值。新基金从上市后第二个交易日起计算。<a href="https://github.com/risingwen/etf-fund-flow-board/blob/main/reference/data/broad_members.csv">查看基金与指数对应表</a>。</footer>
     </section>
     <p class="footnote">数据仅供研究参考，不构成投资建议。所有行情时间均为北京时间。</p>
   </main>

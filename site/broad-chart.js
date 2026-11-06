@@ -1,6 +1,6 @@
 /* 第三部分 · 全市场宽基资金全景（自包含，不依赖 app.js）
    数据：window.__BROAD（broad.js）— 12 类宽基 ETF 日净流入（亿元）+ 累计线 + 最近22日热力矩阵。
-   口径：净流入 = 当日份额变动 × 当日收盘价，按跟踪指数分类汇总；右轴累计线自适应，禁止截断。 */
+   2026-10-26 起使用交易所份额变动 × 单位净值；此前为上游历史序列。 */
 (function () {
   "use strict";
   var B = window.__BROAD;
@@ -43,12 +43,11 @@
         trigger: "axis", axisPointer: { type: "shadow" },
         formatter: function (ps) {
           var out = [ps[0].axisValue];
-          var dayTotal = 0;
+          var dayTotal = CATS.reduce((sum, c) => sum + B.byCategory[c][ps[0].dataIndex], 0);
           ps.forEach(function (p) {
             if (p.seriesName === "累计净流入") {
               out.push(p.marker + "累计净流入：" + fmt(p.value) + " 亿");
             } else {
-              if (p.value) dayTotal += p.value;
               out.push(p.marker + p.seriesName + "：" + fmt(p.value) + " 亿");
             }
           });
@@ -85,24 +84,23 @@
     if (v === null || v === undefined) return "<td class=\"num\">--</td>";
     var a = (0.05 + 0.5 * Math.abs(v) / (maxAbs || 1)).toFixed(3);
     var bg = v > 0 ? "rgba(192,57,43," + a + ")" : (v < 0 ? "rgba(30,142,79," + a + ")" : "transparent");
-    return "<td class=\"num\" style=\"background:" + bg + "\">" + fmt(v, 0) + "</td>";
+    return "<td class=\"num\" style=\"background:" + bg + "\">" + fmt(v, 2) + "</td>";
   }
 
   function renderHeat() {
     var el = document.getElementById("broadHeat");
     if (!el || !B.heat) return;
-    var H = B.heat, maxAbs = 0;
-    CATS.forEach(function (c) {
-      (H.byCategory[c] || []).forEach(function (v) { if (v) maxAbs = Math.max(maxAbs, Math.abs(v)); });
-    });
-    var html = "<table><thead><tr><th>类别</th>";
-    H.dates.forEach(function (dt) { html += "<th class=\"num\">" + dt.slice(5) + "</th>"; });
+    const H = B.heat;
+    const maxAbs = Object.fromEntries(CATS.map(c => [c, Math.max(...H.byCategory[c].map(Math.abs))]));
+    let html = "<table><thead><tr><th>日期</th><th class='num'>合计</th>";
+    CATS.forEach(c => { html += "<th class='num'>" + c + "</th>"; });
     html += "</tr></thead><tbody>";
-    CATS.forEach(function (c) {
-      html += "<tr><td class=\"cat\">" + c + "</td>";
-      (H.byCategory[c] || []).forEach(function (v) { html += heatCell(v, maxAbs); });
+    for (let i = H.dates.length - 1; i >= 0; i--) {
+      const total = CATS.reduce((sum, c) => sum + H.byCategory[c][i], 0);
+      html += "<tr><td>" + H.dates[i] + "</td><td class='num'><strong>" + fmt(total, 2) + "</strong></td>";
+      CATS.forEach(c => { html += heatCell(H.byCategory[c][i], maxAbs[c]); });
       html += "</tr>";
-    });
+    }
     html += "</tbody></table>";
     el.innerHTML = html;
   }
@@ -110,10 +108,9 @@
   function fillMeta() {
     var el = document.getElementById("broadMeta");
     if (!el || !B.meta) return;
-    el.textContent = "区间 " + B.meta.dateFirst + " ~ " + B.meta.dateLast + " · " + B.dates.length +
-      " 个交易日 · 全市场宽基 ETF " + B.meta.broadCount + " 只（全集 " + B.meta.universeTotal +
-      " 只）按跟踪指数分 12 类汇总；净流入 = 当日份额变动 × 当日收盘价。累计净流入最新 " +
-      fmt(B.meta.cumLast, 0) + " 亿元（年内低点 " + fmt(B.meta.cumMin, 0) + " 亿元，右轴自适应）。";
+    el.textContent = B.meta.dateFirst + " 至 " + B.meta.dateLast + " · " + B.dates.length +
+      " 个交易日。最新日纳入 " + B.meta.broadCount + " 只宽基 ETF，按跟踪指数分 12 类。区间累计 " +
+      fmt(B.meta.cumLast, 1) + " 亿元。";
   }
 
   function init() {
