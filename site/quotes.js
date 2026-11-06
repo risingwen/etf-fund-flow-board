@@ -73,7 +73,7 @@ globalThis.ETFQuotes = (() => {
         pct: day.prev > 0 ? (point.price / day.prev - 1) * 100 : null};
     }).sort((a, b) => b.amount - a.amount);
     return {date, time, bars, closes, preClose: indexDay.prev, table,
-      cum: {times, today, base, prev: history[0]?.values, prevDate: history[0]?.day,
+      cum: {times, today, base, previousTradingDay: dates[1], prev: history[0]?.values, prevDate: history[0]?.day,
         s1: {devMax: peak === null ? null : rounded(peak, 2), baseDays: history.length, flag: peak >= 2}}};
   }
 

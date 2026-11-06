@@ -38,15 +38,20 @@ jobs:
       - name: Recheck the latest public trading day
         if: github.event_name == 'workflow_dispatch'
         run: python pipeline/update_broad.py --verify-latest
+      - name: Archive completed minute sessions
+        run: python pipeline/update_minute_history.py
+      - name: Verify latest archived session against public quotes
+        if: github.event_name == 'workflow_dispatch'
+        run: python pipeline/update_minute_history.py --verify-latest
       - name: Save minute snapshot when available
         continue-on-error: true
         run: node pipeline/update_snapshot.mjs
       - name: Save updated board data
         run: |
-          if ! git diff --quiet -- site/data.js site/broad.js reference/data/broad_members.csv; then
+          if ! git diff --quiet -- site/data.js site/broad.js site/minute-history.json reference/data/broad_members.csv; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add -- site/data.js site/broad.js reference/data/broad_members.csv
+            git add -- site/data.js site/broad.js site/minute-history.json reference/data/broad_members.csv
             git commit -m "data: refresh ETF board snapshots"
             git push origin HEAD:main
           fi

@@ -11,6 +11,7 @@
   <script defer src="./data.js"></script>
   <script defer src="./broad.js"></script>
   <script defer src="./quotes.js"></script>
+  <script defer src="./minute-history.js"></script>
   <script defer src="./app.js"></script>
   <script defer src="./broad-chart.js"></script>
 </head>
@@ -35,7 +36,15 @@
       <div class="section-head"><h2>盘中行情</h2><div class="controls"><button id="btnRefresh" type="button">刷新行情</button><button class="secondary" id="btnPause" type="button" aria-pressed="false">暂停自动刷新</button></div></div>
       <div class="status"><span class="tag" id="tagDate">待读取</span><span class="tag" id="tagUpdate" role="status">正在加载快照</span></div>
       <section class="chart-wrap"><div class="chart" id="chartMin" role="img" aria-label="分钟成交额与上证综指走势图"></div></section>
-      <section class="chart-wrap"><div class="chart" id="chartCum" role="img" aria-label="当日累计成交额与近期交易日对比"></div><p id="tagS1" class="tag" hidden></p></section>
+      <section class="chart-wrap" id="minute-history" aria-labelledby="minuteTitle">
+        <div class="section-head"><h3 id="minuteTitle">历史分钟对比</h3>
+          <label class="date-control" for="minuteDate">交易日 <select id="minuteDate" disabled><option value="latest">跟随最新行情</option></select></label>
+        </div>
+        <p id="minuteRange" class="sub">正在读取完整交易日…</p>
+        <div class="chart" id="chartCum" role="img" aria-label="20 只 ETF 累计成交额（亿元）"></div>
+        <p id="minuteStatus" class="sub" role="status"></p>
+        <p id="tagS1" class="tag" hidden></p>
+      </section>
       <section class="table-wrap"><h3>成分 ETF 成交排名</h3><div class="tscroll" tabindex="0" aria-label="成分 ETF 成交排名"><table>
         <thead><tr><th>代码</th><th>名称</th><th class="num">累计成交额（亿）</th><th class="num">占比</th><th class="num">涨跌幅</th></tr></thead><tbody id="etfTable"></tbody>
       </table></div></section>
@@ -43,7 +52,7 @@
         <section class="chart-wrap"><div class="chart half" id="chartTypSup"></div></section>
         <section class="chart-wrap"><div class="chart half" id="chartTypNor"></div></section>
       </details>
-      <footer>分钟行情来自腾讯证券。北京时间工作日交易时段约每 60 秒刷新，显示各成分与指数共同可用的分钟。09:31 含开盘集合竞价，统计至 15:00。量能提示比较当日与历史同时刻累计成交额，阈值为 2 倍。</footer>
+      <footer>盘中行情来自腾讯证券，历史分钟成交额由通达信回补，随后按日归档腾讯分时。历史对比采用现行 20 只 ETF 篮子，每日 240 个分钟，单位为亿元。均线取所选日期之前 20 个交易日的同时刻累计额。北京时间工作日交易时段约每 60 秒刷新，显示各成分与指数共同可用的分钟。09:31 含开盘集合竞价，统计至 15:00。量能提示的放量阈值为 2 倍。</footer>
     </section>
     <section class="part" id="part2"><h2>托底信号对比</h2>
       <p class="sub">将 20 只 ETF 单日合计净流入超过 100 亿元的日期标为“托底日”。这是资金规模筛选，不能据此判断买方身份。</p>

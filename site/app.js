@@ -37,35 +37,7 @@
   var chMin = mk("chartMin");
   chMin.setOption(minuteOption(D.init.bars, D.init.closes, D.init.preClose));
 
-  function cumOption(cum) {
-    var s = [
-      { name: "当日", type: "line", data: cum.today, showSymbol: false, lineStyle: { width: 2.4, color: "#c0392b" } },
-      { name: "近" + cum.s1.baseDays + "日同时段均值", type: "line", data: cum.base, showSymbol: false, lineStyle: { width: 1.6, color: "#24507e", type: "dashed" } }
-    ];
-    if (cum.prev) s.push({ name: cum.prevDate || "前一交易日", type: "line", data: cum.prev, showSymbol: false, lineStyle: { width: 1.4, color: "#e8a33d" } });
-    return {
-      title: { text: "累计成交额对比（亿元）", textStyle: { fontSize: 14, color: "#12355c" } },
-      tooltip: { trigger: "axis" }, legend: { type: "scroll", top: 26, left: 0, textStyle: { fontSize: 12 } },
-      grid: { left: 52, right: 24, top: 72, bottom: 30 },
-      xAxis: { type: "category", data: cum.times, axisLabel: { interval: 29, hideOverlap: true, fontSize: 11 } },
-      yAxis: { type: "value", min: 0 },
-      series: s
-    };
-  }
-  var chCum = mk("chartCum");
-  chCum.setOption(cumOption(D.cum));
-
-  function s1Tag(s1) {
-    var el = $("tagS1");
-    el.hidden = true; el.style.display = "none";
-    if (s1 && s1.devMax !== null && s1.devMax !== undefined) {
-      el.hidden = false; el.style.display = "";
-      el.textContent = (s1.flag ? "⚠ 量能异常 S1：盘中累计量最高达近" + s1.baseDays + "日同时段均值的 " + s1.devMax + " 倍（阈值 2 倍）"
-                                 : "量能 S1：盘中累计量峰值偏离 " + s1.devMax + " 倍（近" + s1.baseDays + "日均值，未达 2 倍异常线）");
-      el.className = s1.flag ? "tag warn" : "tag";
-    }
-  }
-  s1Tag(D.cum.s1);
+  const updateComparison = ETFMinuteHistory.mount(mk("chartCum"), BASKET, SLOTS, {date: D.init.date, cum: D.cum});
   $("tagDate").textContent = "分钟数据日：" + D.init.date;
 
   function typOption(title, amt, idx) {
@@ -130,8 +102,7 @@
       const stamp = live.date + " " + live.time;
       if (stamp < displayed) throw new Error("行情时间早于当前画面");
       chMin.setOption(minuteOption(live.bars, live.closes, live.preClose), true);
-      chCum.setOption(cumOption(live.cum), true);
-      s1Tag(live.cum.s1);
+      updateComparison(live);
       renderTable(live.table);
       const i = SLOTS.indexOf(live.time);
       summary(live.cum.today[i], live.closes[i], stamp);
