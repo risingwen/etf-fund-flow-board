@@ -1,37 +1,36 @@
-/* 20只重点ETF资金观测看板 · 前端逻辑（自研实现）
-   数据：同目录 data.js（window.__DATA，自有管线产出）；
-   盘中刷新：同源 /api/kline（新浪分钟代理，见 pipeline/server.py）；单只失败重试 1 次、部分失败仍渲染，全部失败才回落静态数据。 */
 (function () {
   "use strict";
   var D = window.__DATA;
   if (!D) { document.getElementById("tagUpdate").textContent = "数据未加载"; return; }
   var BASKET = D.meta.basket;
-  function sym(code) { return (code[0] === "5" || code[0] === "6" ? "sh" : "sz") + code; }
   function $(id) { return document.getElementById(id); }
   function fmt(v, n) { return v === null || v === undefined ? "--" : Number(v).toFixed(n === undefined ? 2 : n); }
   var charts = [];
   function mk(id) { var c = echarts.init($(id)); charts.push(c); return c; }
-  window.addEventListener("resize", function () { charts.forEach(function (c) { c.resize(); }); });
+  window.addEventListener("resize", function () { charts.forEach(function (c) { if (c.getDom().clientWidth) c.resize(); }); });
 
   /* ---------- 第一部分：分钟 ---------- */
   var SLOTS = D.init.times;
   function minuteOption(bars, closes, preClose) {
     return {
-      title: { text: D.init.date + " · 20只ETF分钟成交额合计 + 上证综指", textStyle: { fontSize: 14, color: "#12355c" } },
+      title: { text: "分钟成交额与上证综指", textStyle: { fontSize: 14, color: "#12355c" } },
       tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-      legend: { data: ["分钟成交额(亿)", "上证综指"], right: 0, textStyle: { fontSize: 12 } },
-      grid: { left: 58, right: 64, top: 62, bottom: 30 },
-      xAxis: { type: "category", data: SLOTS, axisLabel: { interval: 29, fontSize: 11 } },
+      legend: { data: ["分钟成交额(亿)", "上证综指"], top: 26, left: 0, textStyle: { fontSize: 12 } },
+      grid: { left: 58, right: 64, top: 88, bottom: 30 },
+      xAxis: { type: "category", data: SLOTS, axisLabel: { interval: 29, hideOverlap: true, fontSize: 11 } },
       yAxis: [
         { type: "value", name: "亿元", nameGap: 14, nameTextStyle: { align: "left", padding: [0, 0, 6, 0] }, min: 0 },
-        { type: "value", name: "上证(点)", scale: true, nameGap: 14, nameTextStyle: { align: "right", padding: [0, 0, 6, 0] } }
+        { type: "value", name: "上证(点)", scale: true,
+          min: preClose ? ({min}) => Math.floor(Math.min(min, preClose)) : undefined,
+          max: preClose ? ({max}) => Math.ceil(Math.max(max, preClose)) : undefined,
+          nameGap: 14, nameTextStyle: { align: "right", padding: [0, 0, 6, 0] } }
       ],
       series: [
         { name: "分钟成交额(亿)", type: "bar", data: bars, itemStyle: { color: "#24507e" } },
         { name: "上证综指", type: "line", yAxisIndex: 1, data: closes, showSymbol: false,
           lineStyle: { width: 1.6, color: "#c0392b" },
           markLine: preClose ? { silent: true, symbol: "none", lineStyle: { type: "dashed", color: "#888" },
-            label: { position: "insideEndTop", distance: 6, formatter: "昨收 " + preClose }, data: [{ yAxis: preClose }] } : undefined }
+            label: { position: "insideEndBottom", distance: 4, formatter: "昨收 " + preClose }, data: [{ yAxis: preClose }] } : undefined }
       ]
     };
   }
@@ -40,15 +39,15 @@
 
   function cumOption(cum) {
     var s = [
-      { name: "今日", type: "line", data: cum.today, showSymbol: false, lineStyle: { width: 2.4, color: "#c0392b" } },
+      { name: "当日", type: "line", data: cum.today, showSymbol: false, lineStyle: { width: 2.4, color: "#c0392b" } },
       { name: "近" + cum.s1.baseDays + "日同时段均值", type: "line", data: cum.base, showSymbol: false, lineStyle: { width: 1.6, color: "#24507e", type: "dashed" } }
     ];
     if (cum.prev) s.push({ name: cum.prevDate || "前一交易日", type: "line", data: cum.prev, showSymbol: false, lineStyle: { width: 1.4, color: "#e8a33d" } });
     return {
       title: { text: "累计成交额对比（亿元）", textStyle: { fontSize: 14, color: "#12355c" } },
-      tooltip: { trigger: "axis" }, legend: { right: 10, textStyle: { fontSize: 12 } },
-      grid: { left: 52, right: 24, top: 48, bottom: 30 },
-      xAxis: { type: "category", data: cum.times, axisLabel: { interval: 29, fontSize: 11 } },
+      tooltip: { trigger: "axis" }, legend: { type: "scroll", top: 26, left: 0, textStyle: { fontSize: 12 } },
+      grid: { left: 52, right: 24, top: 72, bottom: 30 },
+      xAxis: { type: "category", data: cum.times, axisLabel: { interval: 29, hideOverlap: true, fontSize: 11 } },
       yAxis: { type: "value", min: 0 },
       series: s
     };
@@ -58,8 +57,9 @@
 
   function s1Tag(s1) {
     var el = $("tagS1");
+    el.hidden = true; el.style.display = "none";
     if (s1 && s1.devMax !== null && s1.devMax !== undefined) {
-      el.style.display = "";
+      el.hidden = false; el.style.display = "";
       el.textContent = (s1.flag ? "⚠ 量能异常 S1：盘中累计量最高达近" + s1.baseDays + "日同时段均值的 " + s1.devMax + " 倍（阈值 2 倍）"
                                  : "量能 S1：盘中累计量峰值偏离 " + s1.devMax + " 倍（近" + s1.baseDays + "日均值，未达 2 倍异常线）");
       el.className = s1.flag ? "tag warn" : "tag";
@@ -73,7 +73,7 @@
       title: { text: title, textStyle: { fontSize: 13, color: "#12355c" } },
       tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
       grid: { left: 54, right: 58, top: 56, bottom: 26 },
-      xAxis: { type: "category", data: D.typ.slots, axisLabel: { interval: 39, fontSize: 11 } },
+      xAxis: { type: "category", data: D.typ.slots, axisLabel: { interval: 39, hideOverlap: true, fontSize: 11 } },
       yAxis: [ { type: "value", name: "亿/分钟", nameGap: 12, nameTextStyle: { padding: [0, 0, 6, 0] }, min: 0 }, { type: "value", name: "指数%", scale: true, nameGap: 12, nameTextStyle: { padding: [0, 0, 6, 0] } } ],
       series: [
         { name: "平均分钟成交额", type: "bar", data: amt, itemStyle: { color: "#7fa6c9" } },
@@ -82,8 +82,17 @@
     };
   }
   var typNote = D.typ.mode.indexOf("netflow>100") === 0 ? "净流入>100亿日" : "窗口内净流入居前日（窗口无>100亿日时的替代分组）";
-  mk("chartTypSup").setOption(typOption("放量样本日均值（" + typNote + "，" + D.typ.supDays.length + " 日：" + D.typ.supDays.join("、") + "）", D.typ.supAmt, D.typ.supIdx));
-  mk("chartTypNor").setOption(typOption("常态日均值（" + D.typ.norDays.length + " 日）", D.typ.norAmt, D.typ.norIdx));
+  $("typMeta").textContent = typNote + "：" + D.typ.supDays.join("、") + "。对照日期：" + D.typ.norDays.join("、") + "。";
+  let samplesReady = false;
+  document.querySelector(".samples").addEventListener("toggle", function () {
+    if (!this.open) return;
+    if (!samplesReady) {
+      mk("chartTypSup").setOption(typOption("放量样本日均值（" + D.typ.supDays.length + " 日）", D.typ.supAmt, D.typ.supIdx));
+      mk("chartTypNor").setOption(typOption("常态日均值（" + D.typ.norDays.length + " 日）", D.typ.norAmt, D.typ.norIdx));
+      samplesReady = true;
+    }
+    charts.forEach(c => c.resize());
+  });
 
   function renderTable(table) {
     var total = table.reduce(function (s, r) { return s + (r.amount || 0); }, 0);
@@ -101,99 +110,60 @@
   renderTable(D.init.table);
   $("tagUpdate").textContent = "静态数据生成于 " + D.meta.generated;
 
-  /* ---------- 盘中刷新（经同源代理） ---------- */
-  var paused = false, timer = null;
-  function isTrading() {
-    var d = new Date(), dw = d.getDay(); if (dw === 0 || dw === 6) return false;
-    var hm = d.getHours() * 100 + d.getMinutes();
-    return (hm >= 930 && hm <= 1130) || (hm >= 1300 && hm <= 1500);
+  let paused = false, loading = false;
+  let displayed = D.init.date + " " + (SLOTS[D.init.bars.findLastIndex(v => v !== null)] || "");
+  function summary(amount, close, dateTime) {
+    $("summaryAmount").textContent = fmt(amount);
+    $("summaryIndex").textContent = fmt(close);
+    $("amountTime").textContent = $("indexTime").textContent = dateTime;
   }
-  function wait(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
-  function fetchOnce(symbol) {
-    return fetch("https://ocqfhempmbxmriecijrg.supabase.co/functions/v1/etf-live/kline?symbol=" + symbol + "&scale=1&datalen=400").then(function (r) {
-      if (!r.ok) throw new Error("http " + r.status); return r.json();
-    }).then(function (j) { if (!Array.isArray(j)) throw new Error("bad payload"); return j; });
+  const lastSlot = D.init.bars.findLastIndex(v => v !== null);
+  summary(D.cum.today[lastSlot], D.init.closes[lastSlot], displayed);
+  $("tagDate").textContent = "分钟行情 · " + displayed;
+  async function refresh() {
+    if (loading) return;
+    loading = true;
+    $("btnRefresh").disabled = true;
+    $("tagUpdate").textContent = "正在读取分钟行情…";
+    try {
+      const live = await ETFQuotes.load(BASKET, SLOTS);
+      const stamp = live.date + " " + live.time;
+      if (stamp < displayed) throw new Error("行情时间早于当前画面");
+      chMin.setOption(minuteOption(live.bars, live.closes, live.preClose), true);
+      chCum.setOption(cumOption(live.cum), true);
+      s1Tag(live.cum.s1);
+      renderTable(live.table);
+      const i = SLOTS.indexOf(live.time);
+      summary(live.cum.today[i], live.closes[i], stamp);
+      displayed = stamp;
+      $("tagDate").textContent = "分钟行情 · " + stamp;
+      $("tagUpdate").textContent = "腾讯行情 · " + BASKET.length + " 只齐全";
+    } catch (error) {
+      $("tagUpdate").textContent = "刷新未完成，保留 " + displayed + " 行情";
+      console.warn("分钟行情刷新失败", error);
+    } finally {
+      loading = false;
+      $("btnRefresh").disabled = false;
+    }
   }
-  /* 容错：单只失败自动重试 1 次（约 2 秒后），仍失败返回 null 而不是抛错，避免一只超时拖垮整轮刷新 */
-  function fetchK(symbol) {
-    return fetchOnce(symbol).catch(function () { return wait(2000).then(function () { return fetchOnce(symbol); }); })
-      .catch(function (e) { console.warn("kline 失败（已重试）: " + symbol, e); return null; });
-  }
-  var lastIdxRows = null, lastPerRows = [];
-  function refresh() {
-    var jobs = [fetchK("sh000001")].concat(BASKET.map(function (b) { return fetchK(sym(b.code)); }));
-    return Promise.all(jobs).then(function (res) {
-      var okCount = res.filter(function (r) { return r !== null; }).length;
-      if (okCount === 0) { $("tagUpdate").textContent = "代理不可用，显示静态数据（生成于 " + D.meta.generated + "）"; return; }
-      var idxFresh = res[0] !== null;
-      var freshPer = res.slice(1);
-      if (idxFresh) lastIdxRows = res[0];
-      /* 单只失败：沿用该只上次成功数据，实在没有才按空处理（该只当日额计 0） */
-      var per = freshPer.map(function (rows, i) {
-        if (rows !== null) { lastPerRows[i] = rows; return rows; }
-        console.warn("分钟线缺失，沿用上次数据: " + BASKET[i].code);
-        return lastPerRows[i] || [];
-      });
-      /* today 取所有新鲜数据里的最晚日期；新鲜数据全无时才回落到缓存日期 */
-      var days = {};
-      if (idxFresh) res[0].forEach(function (r) { days[r.day.slice(0, 10)] = 1; });
-      freshPer.forEach(function (rows) { if (rows) rows.forEach(function (r) { days[r.day.slice(0, 10)] = 1; }); });
-      if (Object.keys(days).length === 0) {
-        if (lastIdxRows) lastIdxRows.forEach(function (r) { days[r.day.slice(0, 10)] = 1; });
-        lastPerRows.forEach(function (rows) { if (rows) rows.forEach(function (r) { days[r.day.slice(0, 10)] = 1; }); });
-      }
-      var dayList = Object.keys(days).sort(); var today = dayList.length ? dayList[dayList.length - 1] : D.init.date;
-      function slotOf(r) { return r.day.slice(11, 16); }
-      var bars = SLOTS.map(function (s) {
-        var tot = 0, ok = false;
-        per.forEach(function (rows) { rows.forEach(function (r) { if (r.day.slice(0, 10) === today && slotOf(r) === s && r.amount !== undefined) { tot += r.amount; ok = true; } }); });
-        return ok ? +(tot / 1e8).toFixed(4) : null;
-      });
-      var closes = SLOTS.map(function (s) {
-        var v = null; if (idxFresh) res[0].forEach(function (r) { if (r.day.slice(0, 10) === today && slotOf(r) === s) v = r.close; });
-        return v;
-      });
-      /* 指数新鲜时整图重绘；指数缺失时只更新成交额柱，保留原有指数线（不留白） */
-      if (idxFresh) chMin.setOption(minuteOption(bars, closes, D.init.preClose));
-      else chMin.setOption({ series: [{ data: bars }] });
-      var cum = [], ssum = 0;
-      bars.forEach(function (v) { ssum += (v || 0); cum.push(+ssum.toFixed(3)); });
-      var base = D.cum.base, devMax = null, devNow = null;
-      cum.forEach(function (v, i) { if (base[i] > 0.5 && bars[i] !== null) { var dv = v / base[i]; if (devMax === null || dv > devMax) devMax = dv; devNow = dv; } });
-      /* 显示截断：S1 已按完整 cum 算完；展示用副本把最后一个有数据格之后全部置 null，
-         今日线在最后有数据处断开、不再向右横拉（无当日数据时全 null，即今日线不画）。 */
-      var lastIdx = -1;
-      bars.forEach(function (v, i) { if (v !== null) lastIdx = i; });
-      var cumDisp = cum.slice();
-      for (var ti = lastIdx + 1; ti < cumDisp.length; ti++) cumDisp[ti] = null;
-      var cumObj = { times: SLOTS, today: cumDisp, prev: D.cum.prev, prevDate: D.cum.prevDate, base: base,
-                     s1: { baseDays: D.cum.s1.baseDays, devMax: devMax ? +devMax.toFixed(2) : null, flag: devMax >= 2 } };
-      chCum.setOption(cumOption(cumObj)); s1Tag(cumObj.s1);
-      var table = BASKET.map(function (b, i) {
-        var rows = per[i].filter(function (r) { return r.day.slice(0, 10) === today; });
-        var amt = rows.reduce(function (s, r) { return s + (r.amount || 0); }, 0) / 1e8;
-        var price = rows.length ? rows[rows.length - 1].close : null;
-        var old = D.init.table.filter(function (x) { return x.code === b.code; })[0];
-        return { code: b.code, name: b.name, price: price, pct: old ? old.pct : null, amount: +amt.toFixed(2) };
-      }).sort(function (a, b2) { return b2.amount - a.amount; });
-      renderTable(table);
-      $("tagDate").textContent = "分钟数据日：" + today;
-      var ts = new Date().toLocaleTimeString("zh-CN");
-      $("tagUpdate").textContent = okCount === 21 ? "已刷新 " + ts : "已刷新 " + ts + "（" + okCount + "/21 只成功）";
-    }).catch(function (e) { console.warn("刷新内部异常（保留当前画面）", e); });
-  }
-  function arm() { if (timer) clearInterval(timer); timer = setInterval(function () { if (!paused && isTrading()) refresh(); }, 60000); }
   $("btnRefresh").addEventListener("click", refresh);
   $("btnPause").addEventListener("click", function () {
-    paused = !paused; this.textContent = paused ? "恢复自动刷新" : "暂停自动刷新"; this.className = paused ? "off" : "";
+    paused = !paused;
+    this.textContent = paused ? "恢复自动刷新" : "暂停自动刷新";
+    this.setAttribute("aria-pressed", String(paused));
   });
-  if (location.protocol.indexOf("http") === 0) { refresh(); arm(); }
+  if (location.protocol.startsWith("http")) {
+    refresh();
+    setInterval(() => { if (!document.hidden && !paused && ETFQuotes.isTrading()) refresh(); }, 60000);
+  }
 
   /* ---------- 第二部分：托底信号 ---------- */
   var sup = D.support, rec = D.recent;
   $("tagSupCount").textContent = "托底日共 " + sup.length + " 天（合计净流入>100亿）";
   var lastNf = null; for (var i = D.daily.netflow.length - 1; i >= 0; i--) { if (D.daily.netflow[i] !== null) { lastNf = { d: D.daily.dates[i], v: D.daily.netflow[i] }; break; } }
   $("tagLatest").textContent = "最新净流入：" + (lastNf ? lastNf.d + " · " + fmt(lastNf.v) + " 亿" : "--");
+  $("summaryFlow").textContent = lastNf ? (lastNf.v > 0 ? "+" : "") + fmt(lastNf.v) : "--";
+  $("flowTime").textContent = lastNf ? lastNf.d + " 已披露" : "待披露";
   function supChart(id, field, colorSup, title, latestVal) {
     var xs = sup.map(function (r) { return r.date.slice(2); }).concat(rec.map(function (r) { return r.date.slice(2) + "·近"; }));
     var vals = sup.map(function (r) { return { value: r[field], itemStyle: { color: colorSup } }; })
@@ -202,7 +172,7 @@
       title: { text: title, textStyle: { fontSize: 14, color: "#12355c" } },
       tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
       grid: { left: 56, right: 28, top: 56, bottom: 56 },
-      xAxis: { type: "category", data: xs, axisLabel: { rotate: 38, fontSize: 10.5, interval: 0 } },
+      xAxis: { type: "category", data: xs, axisLabel: { rotate: 38, fontSize: 10.5, interval: "auto" } },
       yAxis: { type: "value", name: "亿元", nameGap: 12, nameTextStyle: { padding: [0, 0, 6, 0] } },
       series: [{ type: "bar", data: vals,
         markLine: latestVal !== null && latestVal !== undefined ? { silent: true, symbol: "none",
@@ -210,8 +180,8 @@
     };
     mk(id).setOption(opt);
   }
-  supChart("chartSupAmt", "amount", "#24507e", "成交额：托底日（蓝） vs 最近交易日（黄）", rec.length ? rec[rec.length - 1].amount : null);
-  supChart("chartSupNf", "netflow", "#c0392b", "净流入：托底日（红） vs 最近已公布日（黄）", lastNf ? lastNf.v : null);
+  supChart("chartSupAmt", "amount", "#24507e", "成交额 · 托底日与近期（黄）", rec.length ? rec[rec.length - 1].amount : null);
+  supChart("chartSupNf", "netflow", "#c0392b", "净流入 · 托底日与近期（黄）", lastNf ? lastNf.v : null);
 
   /* ---------- 第三部分：日度全景 ---------- */
   var dy = D.daily;
@@ -223,8 +193,8 @@
     mk(id).setOption({
       title: { text: title, textStyle: { fontSize: 14, color: "#12355c" } },
       tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-      legend: { data: ["上证综指"], right: 0, textStyle: { fontSize: 12 } },
-      grid: { left: 58, right: 62, top: 62, bottom: 64 },
+      legend: { data: ["上证综指"], top: 26, left: 0, textStyle: { fontSize: 12 } },
+      grid: { left: 58, right: 62, top: 88, bottom: 64 },
       dataZoom: [{ type: "slider", start: 55 }, { type: "inside" }],
       xAxis: { type: "category", data: dy.dates, axisLabel: { fontSize: 11 } },
       yAxis: [ { type: "value", name: "亿元", nameGap: 14, nameTextStyle: { padding: [0, 0, 6, 0] } }, { type: "value", name: "上证(点)", scale: true, nameGap: 14, nameTextStyle: { padding: [0, 0, 6, 0] } } ],
@@ -235,7 +205,7 @@
     });
   }
   dailyChart("chartDAmt", "amount", "日度成交额（亿元）", null);
-  dailyChart("chartDNf", "netflow", "日度净流入（亿元，红>100亿 / 绿<0）", function (v) {
+  dailyChart("chartDNf", "netflow", "日度净流入（亿元）", function (v) {
     if (v === null || v === undefined) return "#ccc"; if (v > 100) return "#c0392b"; if (v < 0) return "#1e8e4f"; return "#7fa6c9";
   });
 })();

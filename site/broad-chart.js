@@ -37,7 +37,7 @@
       data: B.cumulative
     });
     return {
-      title: { text: B.chartTitle, textStyle: { fontSize: 14, color: "#12355c" }, left: 0, top: 0 },
+      title: { text: "宽基分类净流入与累计值", textStyle: { fontSize: 14, color: "#12355c" }, left: 0, top: 0 },
       legend: { data: B.legendOrder, type: "scroll", top: 26, left: 0, textStyle: { fontSize: 12 } },
       tooltip: {
         trigger: "axis", axisPointer: { type: "shadow" },
@@ -64,13 +64,13 @@
       },
       yAxis: [
         {
-          type: "value", name: B.axisLeft, nameGap: 30, scale: true,
+          type: "value", name: B.axisLeft, nameGap: 12, scale: true,
           nameTextStyle: { fontSize: 12, color: "#5a6b7d" },
           axisLabel: { fontSize: 11 },
           splitLine: { lineStyle: { color: "#e6ecf2" } }
         },
         {
-          type: "value", name: B.axisRight, nameGap: 30, scale: true,
+          type: "value", name: B.axisRight, nameGap: 12, scale: true,
           nameTextStyle: { fontSize: 12, color: "#5a6b7d" },
           axisLabel: { fontSize: 11 },
           splitLine: { show: false }
@@ -83,7 +83,7 @@
 
   function heatCell(v, maxAbs) {
     if (v === null || v === undefined) return "<td class=\"num\">--</td>";
-    var a = (0.05 + 0.5 * Math.abs(v) / maxAbs).toFixed(3);
+    var a = (0.05 + 0.5 * Math.abs(v) / (maxAbs || 1)).toFixed(3);
     var bg = v > 0 ? "rgba(192,57,43," + a + ")" : (v < 0 ? "rgba(30,142,79," + a + ")" : "transparent");
     return "<td class=\"num\" style=\"background:" + bg + "\">" + fmt(v, 0) + "</td>";
   }

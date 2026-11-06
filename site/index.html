@@ -1,87 +1,71 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>20只重点ETF资金观测看板</title>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
-<script src="data.js"></script>
-<script src="broad.js"></script>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#132c38">
+  <title>重点 ETF 资金看板</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="./vendor/echarts/echarts.min.js"></script>
+  <script defer src="./data.js"></script>
+  <script defer src="./broad.js"></script>
+  <script defer src="./quotes.js"></script>
+  <script defer src="./app.js"></script>
+  <script defer src="./broad-chart.js"></script>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <h1>20只重点ETF资金观测看板</h1>
-    <div class="sub">宽基ETF（沪深300 / 科创50 / 创业板 / 中证500 / 中证1000 / 中证A500 / 上证50 等 20 只）成交与申赎资金观测</div>
-    <nav>
-      <a href="#part1">① 盘中分钟观测</a>
-      <a href="#part2">② 托底信号对比</a>
-      <a href="#part3">③ 日度资金全景</a>
-    </nav>
-  </header>
-
-  <section class="part" id="part1">
-    <h2 class="pt">第一部分 · 盘中分钟观测</h2>
-    <div class="status">
-      <span class="tag" id="tagDate">--</span>
-      <span class="tag" id="tagUpdate">未加载</span>
-      <span class="tag warn" id="tagS1" style="display:none"></span>
-      <button id="btnRefresh" type="button">立即刷新</button>
-      <button id="btnPause" type="button">暂停自动刷新</button>
+  <header class="masthead"><div class="mast-inner">
+    <a class="brand" href="#top"><img src="./favicon.svg" width="27" height="27" alt="">ETF 资金观测</a>
+    <a class="repo" href="https://github.com/risingwen/etf-fund-flow-board">GitHub ↗</a>
+  </div></header>
+  <main class="wrap" id="top">
+    <header class="intro">
+      <h1>重点 ETF 资金看板</h1>
+      <p>跟踪 20 只宽基 ETF 的盘中成交、日度申赎和历史资金流向。</p>
+    </header>
+    <div class="metrics">
+      <div><h2>盘中累计成交额</h2><p><strong id="summaryAmount">—</strong> 亿元</p><small id="amountTime">待读取</small></div>
+      <div><h2>上证综指</h2><p><strong id="summaryIndex">—</strong> 点</p><small id="indexTime">待读取</small></div>
+      <div><h2>最近披露净流入</h2><p><strong id="summaryFlow">—</strong> 亿元</p><small id="flowTime">待读取</small></div>
     </div>
-    <section class="chart-wrap"><div class="chart" id="chartMin"></div></section>
-    <section class="chart-wrap"><div class="chart" id="chartCum"></div></section>
-    <h2 class="pt sub2">典型日内走势对照（分钟窗口内样本日均值）</h2>
-    <section class="chart-wrap"><div class="chart half" id="chartTypSup"></div></section>
-    <section class="chart-wrap"><div class="chart half" id="chartTypNor"></div></section>
-    <section class="table-wrap">
-      <h2>单只ETF当日表现（按成交额降序）</h2>
-      <div class="tscroll">
-        <table>
-          <thead><tr><th>代码</th><th>名称</th><th class="num">当日成交额(亿)</th><th class="num">占比</th><th class="num">涨跌幅</th></tr></thead>
-          <tbody id="etfTable"></tbody>
-        </table>
-      </div>
+    <nav aria-label="看板导航"><a href="#part1">盘中行情</a><a href="#part2">托底信号</a><a href="#part3">日度全景</a><a href="#broad">宽基分类</a></nav>
+    <noscript>请启用 JavaScript 以查看图表和数据。</noscript>
+    <section class="part" id="part1">
+      <div class="section-head"><h2>盘中行情</h2><div class="controls"><button id="btnRefresh" type="button">刷新行情</button><button class="secondary" id="btnPause" type="button" aria-pressed="false">暂停自动刷新</button></div></div>
+      <div class="status"><span class="tag" id="tagDate">待读取</span><span class="tag" id="tagUpdate" role="status">正在加载快照</span></div>
+      <section class="chart-wrap"><div class="chart" id="chartMin" role="img" aria-label="分钟成交额与上证综指走势图"></div></section>
+      <section class="chart-wrap"><div class="chart" id="chartCum" role="img" aria-label="当日累计成交额与近期交易日对比"></div><p id="tagS1" class="tag" hidden></p></section>
+      <section class="table-wrap"><h3>成分 ETF 成交排名</h3><div class="tscroll" tabindex="0" aria-label="成分 ETF 成交排名"><table>
+        <thead><tr><th>代码</th><th>名称</th><th class="num">累计成交额（亿）</th><th class="num">占比</th><th class="num">涨跌幅</th></tr></thead><tbody id="etfTable"></tbody>
+      </table></div></section>
+      <details class="samples"><summary>查看历史样本日的分钟走势</summary><p class="sub" id="typMeta"></p>
+        <section class="chart-wrap"><div class="chart half" id="chartTypSup"></div></section>
+        <section class="chart-wrap"><div class="chart half" id="chartTypNor"></div></section>
+      </details>
+      <footer>分钟行情来自腾讯证券。北京时间工作日交易时段约每 60 秒刷新，显示各成分与指数共同可用的分钟。09:31 含开盘集合竞价，统计至 15:00。量能提示比较当日与历史同时刻累计成交额，阈值为 2 倍。</footer>
     </section>
-    <footer>
-      口径：柱为 20 只 ETF 每分钟二级市场成交金额加总；折线为上证综指分钟收盘点位，虚线为上一交易日收盘。横轴固定 09:30~15:00，交易时段约 60 秒自动刷新（需经同源代理服务打开页面），盘中数据有分钟级延迟。<br>
-      量能异常标记（S1）：今日累计成交额与近数日同时段均值曲线之比，≥2 倍时提示。典型走势样本来自分钟数据可得窗口（约近 8 个交易日），分组口径见数据说明。<br>
-      数据来源：新浪行情（分钟与日线）、上交所/深交所官方份额、东方财富基金净值。仅供研究参考，不构成投资建议。
-    </footer>
-  </section>
-
-  <section class="part" id="part2">
-    <h2 class="pt">第二部分 · ETF托底信号</h2>
-    <div class="sub">托底日 = 20 只合计单日净流入（申赎口径）&gt; 100 亿元；虚线为最新一柱的数值水平线，可直接对照历史托底日柱高。</div>
-    <div class="status"><span class="tag" id="tagSupCount">--</span><span class="tag" id="tagLatest">--</span></div>
-    <section class="chart-wrap"><div class="chart" id="chartSupAmt"></div></section>
-    <section class="chart-wrap"><div class="chart" id="chartSupNf"></div></section>
-    <footer>
-      方法：成交额图 = 托底日 + 最近交易日（今日为实时/当日值）；净流入图 = 托底日 + 最近已公布日。净流入为 T+1 口径（份额次日公布），最新一日可能暂缺并以「待公布」占位。<br>
-      数据来源：交易所每日 ETF 份额 × 基金单位净值计算。仅供研究参考，不构成投资建议。
-    </footer>
-  </section>
-
-  <section class="part" id="part3">
-    <h2 class="pt">第三部分 · 日度资金全景</h2>
-    <div class="sub" id="dailyMeta">--</div>
-    <section class="chart-wrap"><div class="chart tall" id="chartDAmt"></div></section>
-    <section class="chart-wrap"><div class="chart tall" id="chartDNf"></div></section>
-    <h2 class="pt sub2">全市场宽基资金全景</h2>
-    <div class="sub" id="broadMeta">--</div>
-    <section class="chart-wrap"><div class="chart broad" id="chartBroad"></div></section>
-    <section class="table-wrap">
-      <h2>最近一个月 · 各类宽基ETF日度净流入（亿元，红=净申购 / 绿=净赎回，颜色深浅按当列相对大小）</h2>
-      <div class="tscroll" id="broadHeat"></div>
+    <section class="part" id="part2"><h2>托底信号对比</h2>
+      <p class="sub">将 20 只 ETF 单日合计净流入超过 100 亿元的日期标为“托底日”。这是资金规模筛选，不能据此判断买方身份。</p>
+      <div class="status"><span class="tag" id="tagSupCount">待读取</span><span class="tag" id="tagLatest">待读取</span></div>
+      <section class="chart-wrap"><div class="chart" id="chartSupAmt"></div></section>
+      <section class="chart-wrap"><div class="chart" id="chartSupNf"></div></section>
+      <footer>最近交易日取自已披露的日度序列。虚线标出最新披露值，方便与历史样本对照。</footer>
     </section>
-    <footer>
-      口径：20 只 ETF 日度成交额（二级市场）与净流入（申赎口径 = 当日份额变动 × 当日单位净值）历史序列；线为上证综指收盘。篮子于 2026-10-15 调整为现行 20 只，此前序列按现行篮子回溯重构（未上市标的不计入），与调整前旧篮子口径不可直接比较。<br>
-      数据来源：新浪日线、上交所/深交所官方份额、东方财富基金净值。仅供研究参考，不构成投资建议。
-    </footer>
-  </section>
-</div>
-<script src="app.js"></script>
-<script src="broad-chart.js"></script>
+    <section class="part" id="part3"><h2>日度资金全景</h2><p class="sub" id="dailyMeta"></p>
+      <section class="chart-wrap"><div class="chart tall" id="chartDAmt"></div></section>
+      <section class="chart-wrap"><div class="chart tall" id="chartDNf"></div></section>
+      <footer>成交额为二级市场买卖金额。增量净流入按每只 ETF 的相邻交易日份额差乘以当日单位净值，再加总为亿元。当前篮子在 2026-10-15 调整，历史段为回溯数据。</footer>
+    </section>
+    <section class="part" id="broad"><h2>全市场宽基分类</h2><p class="sub" id="broadMeta"></p>
+      <section class="chart-wrap"><div class="chart broad" id="chartBroad"></div></section>
+      <section class="table-wrap"><h3>快照末月 · 各类宽基日度净流入</h3>
+        <p class="sub">单位为亿元。红色为净申购，绿色为净赎回，颜色深浅按全表绝对值比较。</p>
+        <div class="tscroll" id="broadHeat" tabindex="0" aria-label="宽基分类净流入热力表"></div>
+      </section>
+      <footer>宽基分类沿用上游历史快照，采用份额变动乘以收盘价，与上方 20 只篮子的净值口径有别。</footer>
+    </section>
+    <p class="footnote">数据仅供研究参考，不构成投资建议。所有行情时间均为北京时间。</p>
+  </main>
 </body>
 </html>

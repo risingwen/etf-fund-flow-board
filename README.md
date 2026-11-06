@@ -1,77 +1,38 @@
-# etf-fund-flow-board · 20只重点ETF资金观测看板（自有版）
+# 重点 ETF 资金看板
 
-数据落 Supabase、网站落 GitHub 的自动部署链路，按 muse12 的
-「GitHub + Supabase 自动部署」方法落地（仓库即真相、双通道分工、流水线部署、接口验证）。
+[打开看板](https://risingwen.github.io/etf-fund-flow-board/) · [部署和定时更新记录](https://github.com/risingwen/etf-fund-flow-board/actions/workflows/pages.yml)
 
-## 架构
+公开静态看板，跟踪 20 只宽基 ETF 的分钟成交、日度申赎和净流入超过 100 亿元的历史交易日。站点部署到 GitHub Pages，图表库随站点提供，行情和历史更新使用公开数据接口。
 
-```text
-pipeline/build_data.py  (新浪/上交所/深交所公开源)
-        │  生成
-        ▼
-site/  静态站 (index.html + app.js + data.js, ECharts) ──push──▶ GitHub Pages
-        │
-pipeline/sync_supabase.py (数据面 PostgREST, service_role)
-        │  upsert
-        ▼
-Supabase 项目 ocqfhempmbxmriecijrg (musesina)
-  ├─ etf_daily_total   一行一天: 合计成交额/净流入 (亿元)、上证收盘、托底标记
-  └─ etf_daily_detail  一行一天一只: 收盘/成交额 (亿元)/份额 (份)/净流入 (亿元)
-supabase/migrations/   建表 DDL (幂等), 经 Management API (sbp_) 执行
-.github/workflows/deploy.yml  push 到 main 自动: 跑 SQL 迁移 -> 发布 Pages
+## 数据怎样更新
+
+| 模块 | 数据来源与计算 | 更新方式 |
+| --- | --- | --- |
+| 盘中行情及成交排名 | 腾讯证券五日分时，按 20 只 ETF 与上证综指共同有数据的最后一分钟对齐。单只涨跌幅按当日价格和昨收计算。09:31 包含开盘集合竞价，剔除 15:00 后的盘后成交 | 打开页面时读取。北京时间周一至周五交易时段，每 60 秒刷新可见页面。失败时继续显示上一次成功行情，页面标出行情日期 |
+| 日度资金、托底日 | 保留上游历史，2026-10-23 之后使用东方财富日线成交额、基金单位净值、沪深交易所 ETF 份额。逐只计算相邻交易日份额差乘当日单位净值。20 只全部齐备才追加 | GitHub Actions 计划每周一至周六北京时间 08:43 增量补齐至前一自然日，节假日无新交易日便跳过。实际运行时间以 Actions 为准 |
+| 典型日内走势、全市场宽基分类 | 上游样本与历史快照。全市场分类按份额变动乘收盘价汇总 | 显示各自的样本日期，目前为 2026 年 10 月的快照 |
+
+页面中的成交额和净流入均以亿元计。净流入为申赎估算，“托底日”为金额阈值筛选。部分数据商会修订历史数据；程序保留已发布历史，增量补齐后续日期。
+
+## 发布和预览
+
+在仓库 **Settings → Pages → Source** 选择 **GitHub Actions**。站点和静态资源均从 `site/` 发布。推送到 `main` 会自动部署。手动补数可在 **Actions → Publish ETF board → Run workflow** 运行，勾选补数选项。定时更新如遇上游错误，查看 update 步骤日志并重新运行。
+
+本地预览命令（在仓库根目录执行）：
+
+```powershell
+py -m http.server 8000 --bind 127.0.0.1 --directory site
 ```
 
-## 通道分工（凭证都在保险库，绝不进仓库/聊天）
+打开 <http://127.0.0.1:8000/>。在 Linux/macOS 上将 `py` 换为 `python3`。
 
-| 面 | 通道 | 本地脚本 | 状态 |
-|---|---|---|---|
-| 管理面 | Management API `api.supabase.com`（连接器 `custom.supabase-mgmt`，sbp_ 令牌） | `deploy/sb_mgmt.py`（项目内封装，同连接器）/ 连接器 helper `custom.supabase-mgmt/bin/sb_mgmt.py` | ✅ 已验通：查项目、跑 SQL/DDL 均可 |
-| 数据面 | PostgREST（连接器 `custom.supabase`，service_role） | `deploy/sb_data.py`（透传既有 helper）、`pipeline/sync_supabase.py` | ✅ 已验通 |
+增量脚本 **`pipeline/update_daily.py`** 可手动运行：
 
-注意：`custom.supabase` 那把是数据面钥匙，直接调 Management API 会回
-401 `No access token provided`（它以 apikey 头投递，管理面只认 Bearer sbp_），
-管理面必须走 `custom.supabase-mgmt`。报错签名对照见 muse12 方法第三节。
-
-## 已落地状态（2026-10-23 实测）
-
-- 两表已建（结构与 `supabase/migrations/0001_create_etf_tables.sql` 一致；
-  该迁移已于当日经 Management API 幂等重跑验证无副作用）。
-- 数据已同步：`etf_daily_total` 738 行（2023-10-09 ~ 2026-10-23，SQL count 实测）；
-  `etf_daily_detail` 14,760 行 upsert 完成（738 日 × 20 只）。
-- 份额/净流入覆盖随管线回溯进度：沪市份额 490 日已回填（至 2026-10-22），
-  深市份额目前近 30 日（区间报表回溯中）；覆盖不足的日子 netflow 为 null，不编造。
-  详见 `pipeline/REPORT.md`。
-
-## 日常操作
-
-```bash
-# 管线重算 + 同步 (表已在, 直接 upsert; 表不在自动落 pipeline/supabase_rows.json)
-~/workspace/muse-free-market-data/.venv/bin/python pipeline/build_data.py
-python3 pipeline/sync_supabase.py
-
-# 管理面: 查项目 / 跑任意 SQL / 查表结构
-python3 deploy/sb_mgmt.py projects
-python3 deploy/sb_mgmt.py query "select count(*) from public.etf_daily_total"
-python3 deploy/sb_mgmt.py query-file supabase/migrations/0001_create_etf_tables.sql
-
-# 数据面: 读表
-python3 deploy/sb_data.py get --path "/rest/v1/etf_daily_total?select=*&order=trade_date.desc&limit=5"
+```powershell
+py -m pip install requests openpyxl
+py pipeline/update_daily.py
 ```
 
-## GitHub 落地清单（待办，一次性）
+脚本从已发布日开始核对交易日历，分批查询交易所份额和当日净值，完整数据写入 `site/data.js`。重复运行会从最后一天续跑。分钟快照脚本 **`pipeline/update_snapshot.mjs`** 使用同一套前端行情计算逻辑，在 Node.js 22 或以上运行 `node pipeline/update_snapshot.mjs` 即可更新内置分钟快照，供实时接口不可用时展示。定时任务也会尝试更新这份快照。复核后提交并推送即可发布。原仓库的全量研究管线和可选 Supabase 工具仍在 `pipeline/`、`deploy/` 和 `supabase/`，日常更新使用上述增量脚本。
 
-按 muse12 方法第七节第 3 条：GitHub 应用没有建仓与写 workflows 的权限，所以：
-
-1. 用户在 GitHub 手动建私仓 `sina-west4angle/etf-fund-flow-board`，
-   并把仓库加入 Muse GitHub 应用的授权范围。
-2. 本地仓库已 init 并完成首个 commit（见下），建好仓后：
-   `git remote add origin git@github.com:sina-west4angle/etf-fund-flow-board.git && git push -u origin main`
-   （本机 gh 未登录、无 SSH 推送凭证时，改由 GitHub 连接器 Contents API 逐文件写入，
-   注意 content 传纯文本不要传 base64 —— 方法第七节第 4 条。）
-3. `.github/workflows/deploy.yml` 若经连接器写不进去（workflow scope 403），
-   由用户在网页端粘贴创建一次；此后日常变更走正常 push。
-4. 仓库 Settings → Secrets 添加：
-   `SUPABASE_ACCESS_TOKEN`（Actions 专用 sbp_，与本地那把分开生成，有效期选 90 天）、
-   `SUPABASE_PROJECT_REF` = `ocqfhempmbxmriecijrg`。
-5. Settings → Pages → Source 选 “GitHub Actions”。
-6. push 后看 Actions 跑完，再抽查线上页面与 Supabase 计数，完成验证闭环。
+本项目 fork 自 [sina-west4angle/etf-fund-flow-board](https://github.com/sina-west4angle/etf-fund-flow-board)。Apache ECharts 5.5.1 随站点分发，许可文件见 `site/vendor/echarts/`。
