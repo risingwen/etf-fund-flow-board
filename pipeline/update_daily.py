@@ -22,7 +22,8 @@ def request(url, params, referer, binary=False):
         response.raise_for_status()
         return response.content if binary else response.json()
 
-    return retry(fetch)
+    # 行情源偶发主动断连，逐步拉长重试间隔，避免短时间连续请求。
+    return retry(fetch, n=3, wait=5)
 
 
 def number(value):
