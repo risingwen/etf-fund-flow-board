@@ -83,7 +83,15 @@ def check_members(members, previous, published):
         raise ValueError(f"新匹配到已上市基金，须复核历史覆盖 {unexpected}")
 
 
-def extend(board, members, days):
+def disclosure_pending(day, detail, allow_pending):
+    age = (datetime.now(EAST_ASIA).date() - date.fromisoformat(day)).days
+    if allow_pending and 0 <= age < 5:
+        print(f"{day} 等待完整披露，下次自动续补。{detail}", flush=True)
+        return True
+    raise ValueError(f"{day} {detail}")
+
+
+def extend(board, members, days, allow_pending=False):
     sz_codes = {c for c in members if mkt(c) == "sz"}
     shares = szse_shares(sz_codes, days[0], days[-1])
     with ThreadPoolExecutor(max_workers=3) as pool:
@@ -93,15 +101,21 @@ def extend(board, members, days):
     changes = {}
     active = {}
     changed = set()
+    ready = []
     for previous, day in zip(days, days[1:]):
         changes[day] = {}
         active[day] = [c for c, m in members.items() if m["listed"] <= day]
+        missing = [code for code in active[day] if members[code]["listed"] <= previous
+                   and ((previous, code) not in shares or (day, code) not in shares)]
+        if missing and disclosure_pending(
+                day, f"缺少相邻两日的交易所份额 {previous} / {day}，{len(missing)} 只，示例 {missing[:3]}",
+                allow_pending):
+            break
+        ready.append(day)
         for code in active[day]:
             # 首日没有相邻上市交易日，不把初始份额计作当日申购。
             if members[code]["listed"] > previous:
                 continue
-            if (previous, code) not in shares or (day, code) not in shares:
-                raise ValueError(f"缺少相邻两日的交易所份额 {code} {previous} / {day}")
             delta = shares[day, code] - shares[previous, code]
             if delta:
                 changes[day][code] = delta
@@ -112,11 +126,13 @@ def extend(board, members, days):
 
     with ThreadPoolExecutor(max_workers=4) as pool:
         nav = dict(pool.map(fund_nav, sorted(changed)))
-    for day in days[1:]:
+    for day in ready:
+        missing = [code for code in changes[day] if nav[code].get(day, 0) <= 0]
+        if missing and disclosure_pending(
+                day, f"缺少当日单位净值，{len(missing)} 只，示例 {missing[:3]}", allow_pending):
+            break
         sums = dict.fromkeys(board["categories"], 0.0)
         for code, delta in changes[day].items():
-            if nav[code].get(day, 0) <= 0:
-                raise ValueError(f"缺少当日单位净值 {code} {day}")
             sums[members[code]["category"]] += delta * nav[code][day] / 1e8
         board["dates"].append(day)
         for cat, value in sums.items():
@@ -201,9 +217,9 @@ def main():
             check_members(members, read_members(), start)
             board["meta"].update(universeTotal=universe, catalogueDate=datetime.now(EAST_ASIA).date().isoformat())
             board["meta"].setdefault("publicStart", days[1])
-        extend(board, members, days)
-        start = days[-1]
-        if stop == end:
+        extend(board, members, days, allow_pending=True)
+        start = board["dates"][-1]
+        if start < days[-1] or stop == end:
             break
     if members is not None:
         validate(board)
