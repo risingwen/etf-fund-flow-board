@@ -83,8 +83,9 @@ def szse_shares(basket, start, end):
         result = {}
         for row in rows:
             day, code, shares = (row[index] for index in fields)
-            if str(code) in basket and shares is not None:
-                result[str(day)[:10], str(code)] = number(str(shares).replace(",", ""))
+            code = str(code).strip()
+            if code in basket and shares is not None:
+                result[str(day)[:10], code] = number(str(shares).replace(",", ""))
         return result
     finally:
         workbook.close()

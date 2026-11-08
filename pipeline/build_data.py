@@ -128,8 +128,9 @@ def _sse_one(d):
            "&pageHelp.beginPage=1&pageHelp.cacheSize=1&pageHelp.endPage=1")
     def _get():
         r = requests.get(url, headers={**UA, "Referer": "https://www.sse.com.cn/"}, timeout=120)
+        r.raise_for_status()
         return r.json().get("result") or []
-    rows = retry(_get, n=2, wait=2.0)
+    rows = retry(_get, n=3, wait=5.0)
     m = {}
     for r in rows:
         if r.get("STAT_DATE") != d: continue
