@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#132c38"><title>主题与杠杆资金 · ETF 资金观测</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./markets.css?v=20261115">
+  <script defer src="./vendor/echarts/echarts.min.js"></script>
+  <script defer src="./markets.js?v=20261115"></script>
+</head>
+<body>
+  <header class="masthead"><div class="mast-inner"><a class="brand" href="./"><img src="./favicon.svg" width="27" height="27" alt="">ETF 资金观测</a><a class="repo" href="./">宽基主看板 ↗</a></div></header>
+  <main class="wrap">
+    <header class="intro"><p class="eyebrow">主题交易 · 融资融券 · 市场杠杆</p><h1>主题与杠杆资金</h1>
+      <p>从主题 ETF 成交到融资交易，用公开数据观察资金的不同侧面。</p>
+      <p class="sub" id="marketUpdate" role="status">正在读取经过校验的数据…</p></header>
+    <nav aria-label="资金看板导航"><a href="#themes">13 类主题分时</a><a href="#margin">ETF 两融</a><a href="#leverage">杠杆资金</a><a href="./">宽基看板</a></nav>
+    <noscript>请启用 JavaScript 以查看图表。</noscript>
+    <section class="part" id="themes">
+      <div class="section-head"><h2>13 类主题分时</h2><button id="themeRefresh">刷新所选主题行情</button></div>
+      <p class="sub" id="themeMeta">正在加载主题成分及历史归档…</p>
+      <div class="theme-grid" id="themeButtons" aria-label="选择主题"></div>
+      <div class="section-head"><label class="date-control">交易日 <select id="themeDate"><option value="latest">跟随最新行情</option></select></label>
+        <span id="themeLive" class="tag" role="status">历史归档</span></div>
+      <p class="sub" id="themeDefinition"></p>
+      <section class="chart-wrap"><div id="themeChart" class="chart tall" role="img" aria-label="主题 ETF 累计成交额与前 20 个交易日同时段均值"></div></section>
+      <p id="themeCompare" class="sub"></p>
+      <details><summary>查看所选主题成分及口径</summary><p class="sub">按交易所披露的标的指数动态匹配。类别之间可能重叠，不能直接加总为全市场成交额。历史按现行篮子和上市日期回溯。</p><div class="tscroll" id="themeMembers" tabindex="0"></div></details>
+      <footer>历史为真实 5 分钟累计成交额节点，09:35 包含集合竞价。均值仅取所选日期之前 20 个交易日；不足 20 日不绘制均值。交易时段每 60 秒请求所选主题全部成分的腾讯行情，统一到共同可用时刻。失败保留归档并标明日期；不会用零替代缺失行情。</footer>
+    </section>
+    <section class="part" id="margin">
+      <div class="section-head"><h2>ETF 融资融券</h2><label class="date-control">宽基类别 <select id="marginCategory"></select></label></div>
+      <p class="sub" id="marginMeta"></p><div class="metrics" id="marginMetrics"></div>
+      <section class="chart-wrap"><h3>融资余额与融券余额</h3><div id="marginBalance" class="chart" role="img" aria-label="所选宽基 ETF 融资与融券余额"></div></section>
+      <section class="chart-wrap"><h3>融资净买入与基金净申赎</h3><div id="marginNet" class="chart" role="img" aria-label="融资净买入与全类别 ETF 净申赎"></div></section>
+      <details><summary>查看最近 22 日明细与两融覆盖</summary><div class="tscroll" id="marginTable" tabindex="0"></div><p class="sub" id="marginMembers"></p></details>
+      <footer>单位为亿元。融资净买入＝融资买入额－融资偿还额；融资融券余额并非 ETF 净申购。两融只统计公开接口有记录的标的 ETF，净申赎采用主看板该类全部 ETF，成分范围不同。两市披露齐全后更新合计。历史源为东方财富公开逐券明细，分类来自沪深交易所目录。<a href="./audit/market-coverage.json">查看交易所逐只核对结果</a>。</footer>
+    </section>
+    <section class="part" id="leverage">
+      <h2>杠杆资金看板</h2><p class="sub" id="leverageMeta"></p>
+      <div class="controls market-filters">
+        <label class="date-control">区间 <select id="levRange"><option value="126">近半年</option><option value="250" selected>近一年</option><option value="750">近三年</option><option value="1250">近五年</option><option value="all">全部</option></select></label>
+        <label class="date-control">频率 <select id="levFrequency"><option value="day">日度</option><option value="week">周度</option><option value="month">月度</option></select></label>
+        <label class="date-control">平滑 <select id="levAverage"><option value="1">原值</option><option value="5">5 期均线</option><option value="20">20 期均线</option></select></label>
+      </div>
+      <div class="metrics" id="leverageMetrics"></div>
+      <section class="chart-wrap"><h3>沪深融资余额与净买入</h3><div id="levBalance" class="chart tall" role="img" aria-label="沪深融资余额与融资净买入"></div></section>
+      <section class="chart-wrap"><h3>沪深分市场余额</h3><div id="levMarkets" class="chart" role="img" aria-label="沪市和深市融资余额"></div></section>
+      <section class="chart-wrap"><h3>交易活跃度与融资占比</h3><div id="levActivity" class="chart" role="img" aria-label="两融交易额占比与融资余额占流通市值比"></div></section>
+      <section class="chart-wrap"><h3>担保物与维持担保比例</h3><div id="levGuarantee" class="chart" role="img" aria-label="担保物总价值与平均维持担保比例"></div></section>
+      <section class="chart-wrap"><h3>参与融资融券交易的投资者</h3><div id="levAccounts" class="chart" role="img" aria-label="参与交易和有负债投资者数量"></div></section>
+      <details open><summary>行业融资分布 · 最新公开快照</summary><p class="sub" id="industryMeta"></p>
+        <div class="controls market-filters"><label class="date-control">排序 <select id="industrySort"><option value="net">融资净买入</option><option value="balance">融资余额</option></select></label><label class="date-control">查找 <input id="industrySearch" type="search" placeholder="输入行业名称"></label></div>
+        <div class="tscroll industry-table" id="industryTable" tabindex="0"></div></details>
+      <footer>汇总口径为沪深两市（包含基金，不含北交所），不等同于纯 A 股股票两融。账户指标是独立统计口径；早期未披露字段留空。周/月频率：余额取末值、净买入求和、比例取日均；平滑取所选频率的 5 或 20 期均值，最新一期可能尚未结束。行业使用东方财富行业分类，可能含不同层级，不能直接加总，也不等同于申万行业。</footer>
+    </section>
+    <section class="part"><h2>数据来源与自动更新</h2><p class="sub" id="sourceStatus"></p>
+      <p class="sub">每天北京时间 08:50、16:10、20:50 尝试更新。交易所和源站尚未披露时保留最近完整数据，页面每 60 秒检查发布版本，并在重新切回页面或联网时检查。不同模块以各自显示的数据日期为准。</p>
+      <p class="sub"><a href="https://www.sse.com.cn/market/othersdata/margin/detail/">上交所两融明细</a> · <a href="https://www.szse.cn/disclosure/margin/margin/index.html">深交所两融信息</a> · <a href="https://data.eastmoney.com/rzrq/">东方财富两融汇总</a> · <a href="https://data.eastmoney.com/rzrq/zhtjday.html">账户和担保统计</a> · <a href="https://github.com/risingwen/etf-fund-flow-board/blob/main/reference/data/theme_rules.json">主题指数规则</a></p>
+    </section>
+    <p class="footnote">数据仅供研究参考，不构成投资建议。所有时间均为北京时间。</p>
+  </main>
+</body>
+</html>

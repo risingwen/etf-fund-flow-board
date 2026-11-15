@@ -1,6 +1,6 @@
 # 重点 ETF 资金看板
 
-[打开看板](https://risingwen.github.io/etf-fund-flow-board/) · [部署和定时更新记录](https://github.com/risingwen/etf-fund-flow-board/actions/workflows/pages.yml)
+[打开宽基看板](https://risingwen.github.io/etf-fund-flow-board/) · [主题与杠杆资金](https://risingwen.github.io/etf-fund-flow-board/markets.html) · [部署和定时更新记录](https://github.com/risingwen/etf-fund-flow-board/actions/workflows/pages.yml)
 
 公开静态看板，跟踪 20 只宽基 ETF 的分钟成交、日度申赎和净流入超过 100 亿元的历史交易日。站点部署到 GitHub Pages，图表库随站点提供，行情和历史更新使用公开数据接口。
 
@@ -69,3 +69,37 @@ py pipeline/update_daily.py
 脚本从已发布日开始核对交易日历，分批查询交易所份额和当日净值，完整数据写入 `site/data.js`。重复运行会从最后一天续跑。分钟快照脚本 **`pipeline/update_snapshot.mjs`** 使用同一套前端行情计算逻辑，在 Node.js 22 或以上运行 `node pipeline/update_snapshot.mjs` 即可更新内置分钟快照，供实时接口不可用时展示。定时任务也会尝试更新这份快照。复核后提交并推送即可发布。原仓库的全量研究管线和可选 Supabase 工具仍在 `pipeline/`、`deploy/` 和 `supabase/`，日常更新使用上述增量脚本。
 
 本项目 fork 自 [sina-west4angle/etf-fund-flow-board](https://github.com/sina-west4angle/etf-fund-flow-board)。Apache ECharts 5.5.1 随站点分发，许可文件见 `site/vendor/echarts/`。
+
+## ETF 两融、13 类主题与杠杆资金
+
+新增页面 `site/markets.html`，首页导航可直接进入。全部数据独立从公开接口采集，不依赖 WorkBuddy 登录、私有 Choice 工作簿或付费接口。
+
+| 模块 | 初次验证的公开覆盖 | 口径与限制 |
+| --- | --- | --- |
+| ETF 两融 | 2026-01-05 至 2026-11-12，207 日；科创50、创业板指、中证A500、沪深300 | 当日 59 只 ETF 有两融记录，分别为 13、9、21、16 只；其余目录基金不假定余额为零。展示融资余额、买入、偿还、净买入与融券余额。净申赎对照是该类全部 ETF，成分范围不同。 |
+| 13 类主题分时 | 2026-01-05 至 2026-11-13，208 日，213 只独立 ETF | 主题可重叠。真实 5 分钟成交额归档，逐只日线核对；盘中读取所选主题全部成分、每 60 秒自动更新。历史日使用该日之前 20 个交易日同时段均值，最初 20 日不显示均线。 |
+| 沪深两融汇总 | 2010-03-31 至 2026-11-12，4,036 日 | 含基金，不含北交所。融资余额、净买入、沪深拆分、融资余额占流通市值。两市均披露后才纳入合计。 |
+| 账户与担保 | 2012-09-27 至 2026-11-12，3,427 日 | 交易活跃度、担保物价值、维持担保比例、投资者数。早期字段缺失保留为空，账户统计与市场汇总不是同一口径。 |
+| 行业分布 | 最新公开快照，当前 2026-11-13、124 项 | 东方财富分类，含不同层级，不等同于申万行业，不能加总。接口仅提供最新快照；若其日期领先两市完整汇总，会标为待齐全。 |
+
+主题映射见 `reference/data/theme_rules.json`，按交易所标的指数精确匹配。新增同指数 ETF 自动纳入；变更分类或退出目录时停止覆盖并等待核实。CPO 使用通信设备篮子，白酒使用中证酒指数，养殖包含农业类，页面明确说明，不将代理篮子误称纯主题指数。历史为现行成分按上市日期回溯，并非历史时点全市场成分。
+
+2026-07-30 的 159515 因持有人大会全天停牌，记录在 `reference/data/theme_halts.json`，附深交所原始公告链接。只有公告核实的全天停牌才按零成交处理，普通缺失不会填零。2026-11-12 的 59 只 ETF 融资余额和买入额已逐只与沪深交易所原始报表核对，[对账结果](site/audit/market-coverage.json)随站发布。
+
+新增工作流 `.github/workflows/market-panels.yml` 每天北京时间 **08:50、16:10、20:50** 运行，包含周末以捕获延迟披露。GitHub 的计划任务可能延迟，实际执行以 Actions 记录为准。三个模块分别尝试更新，失败保留上次文件并发布失败状态；源恢复后自动续补。两融重查最近 10 个自然日以纳入修订，主题超出腾讯五日窗口会尝试通达信回补。公开接口不保证永久可用。
+
+新版页面每 60 秒检查发布清单，文件 SHA-256 校验全部通过才更新。切回页面、网络恢复立即检查。保留所选主题、日期、类别、频率、均线、缩放和滚动位置。历史更新和盘中行情各自显示时间；此功能不需要每天重新打开页面。
+
+脚本与用途：
+
+| 脚本及命令 | 用途 |
+| --- | --- |
+| `py pipeline/update_market_panels.py` | 独立更新三个模块并写入采集状态，任一失败返回非零，但已完成模块保留。 |
+| `py pipeline/update_etf_margin.py` | 按交易所宽基清单聚合逐只两融，分页总数、净买入恒等式校验。 |
+| `py pipeline/update_leverage.py` | 增量更新长期两融、账户担保和最新行业快照。 |
+| `py pipeline/update_themes.py` | 检查主题成分并续补归档，逐只核对分时与日线。 |
+| `py pipeline/update_themes.py --bootstrap --days 208` | 以通达信 5 分钟行情回补指定交易日窗口；需 `eltdx==3.3.5`。 |
+| `py pipeline/verify_market_sources.py` | 重新与沪深交易所核对 ETF 两融末日原始披露，写入对账文件。 |
+| `py pipeline/validate_market_panels.py` | 发布前验证日期、金额恒等式、13 类曲线与上市覆盖数。 |
+
+新模块所需依赖：`py -m pip install requests openpyxl eltdx==3.3.5`。本地预览仍先运行 `py pipeline/build_history_manifest.py`，再启动本地 HTTP 服务。

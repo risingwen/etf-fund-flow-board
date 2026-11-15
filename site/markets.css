@@ -1,0 +1,19 @@
+.eyebrow { letter-spacing:.08em; color:var(--teal)!important; font-size:12px!important; font-weight:650; }
+.theme-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin:16px 0; }
+.theme-grid button { background:#f3f7f6; border:1px solid #d0ddda; color:var(--ink); text-align:left; min-height:64px; }
+.theme-grid button[aria-pressed="true"] { background:var(--teal); color:white; border-color:var(--teal); }
+.theme-grid small { display:block; font-size:11px; margin-top:5px; opacity:.8; }
+.market-filters { gap:16px; padding:12px 0; }
+.market-filters input { max-width:155px; border:1px solid #afbfc0; border-radius:6px; padding:7px; font:inherit; }
+.industry-table { max-height:380px; }
+.industry-table thead { position:sticky; top:0; z-index:1; }
+.part details { margin-top:16px; }
+.metrics { margin:12px 0; }
+.metrics .compact { font-size:28px; }
+@media(max-width:600px) {
+ .theme-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+ .theme-grid button { padding:8px 6px; }
+ .market-filters { gap:8px; }
+ .metrics .compact { font-size:23px; }
+ nav a { font-size:12px; }
+}
