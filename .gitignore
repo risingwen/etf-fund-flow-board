@@ -5,3 +5,4 @@ pipeline/cache/
 pipeline/live_out/
 pipeline/supabase_rows.json
 reference/*.zip
+site/history-manifest.json

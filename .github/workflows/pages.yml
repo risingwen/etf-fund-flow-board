@@ -76,6 +76,8 @@ jobs:
           ref: main
           persist-credentials: false
       - uses: actions/configure-pages@v5
+      - name: Build history data manifest
+        run: python3 pipeline/build_history_manifest.py
       - uses: actions/upload-pages-artifact@v4
         with:
           path: site

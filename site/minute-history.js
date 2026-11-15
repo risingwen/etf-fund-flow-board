@@ -2,6 +2,17 @@
 globalThis.ETFMinuteHistory = (() => {
   const WINDOW = 20;
 
+  function validate(data, basket, times) {
+    const codes = basket.map(row => row.code).sort();
+    if (data.version !== 1 || JSON.stringify(codes) !== JSON.stringify(data.codes) ||
+        JSON.stringify(times) !== JSON.stringify(data.times) || !data.calendar.length ||
+        JSON.stringify(data.calendar) !== JSON.stringify(Object.keys(data.days).sort()) ||
+        data.calendar.some(day => data.days[day].length !== times.length ||
+          data.days[day].some((v, i, values) => !Number.isFinite(v) || v < 0 || (i > 0 && v < values[i - 1])))) {
+      throw new Error("分钟归档结构不匹配");
+    }
+  }
+
   function comparison(archive, date, previousDay) {
     const calendar = archive.calendar;
     let end = calendar.indexOf(date);
@@ -68,7 +79,7 @@ globalThis.ETFMinuteHistory = (() => {
       } else if (archive) {
         details = "此前有 " + base.count + " 个完整交易日，距 20 日均线还差 " + (WINDOW - base.count) + " 天。";
       } else {
-        details = failed ? "历史归档未能载入，请重新加载页面。" : "正在读取历史归档…";
+        details = failed ? "历史归档暂不可用，稍后自动重试。" : "正在读取历史归档…";
       }
       status.textContent = amount + details;
       chart.getDom().setAttribute("aria-label", "20 只 ETF 累计成交额。" + status.textContent);
@@ -87,28 +98,29 @@ globalThis.ETFMinuteHistory = (() => {
 
     select.addEventListener("change", render);
     render();
-    fetch("./minute-history.json", {signal: AbortSignal.timeout(20000)}).then(async response => {
-      if (!response.ok) throw new Error("HTTP " + response.status);
-      const data = await response.json();
-      const codes = basket.map(row => row.code).sort();
-      if (data.version !== 1 || JSON.stringify(codes) !== JSON.stringify(data.codes) ||
-          JSON.stringify(times) !== JSON.stringify(data.times) || !data.calendar.length ||
-          JSON.stringify(data.calendar) !== JSON.stringify(Object.keys(data.days).sort()) ||
-          data.calendar.some(day => data.days[day].length !== times.length)) throw new Error("分钟归档结构不匹配");
+    function updateArchive(data) {
+      validate(data, basket, times);
+      if (archive && data.calendar.at(-1) < archive.calendar.at(-1)) throw new Error("分钟归档日期倒退");
+      const selected = select.value;
+      if (selected !== "latest" && !data.days[selected]) throw new Error("归档缺少所选交易日");
       archive = data;
+      failed = false;
       const dates = archive.calendar;
+      select.replaceChildren(new Option("跟随最新行情", "latest"));
       for (const date of dates.slice().reverse()) select.add(new Option(date, date));
+      select.value = selected;
       select.disabled = false;
       range.textContent = "已归档 " + dates.length + " 个交易日 · " + dates[0] + " 至 " + dates.at(-1);
       render();
-    }).catch(error => {
+    }
+    function unavailable() {
+      if (archive) return;
       failed = true;
       range.textContent = "历史归档暂不可用";
       render();
-      console.warn("分钟归档加载失败", error);
-    });
-    return live => { latest = live; render(); };
+    }
+    return {updateLive: live => { latest = live; render(); }, updateArchive, unavailable};
   }
 
-  return {mount, comparison};
+  return {mount, comparison, validate};
 })();

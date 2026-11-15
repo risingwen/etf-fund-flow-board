@@ -121,6 +121,20 @@
       var ch = window.echarts.init(dom);
       ch.setOption(buildOption());
       window.addEventListener("resize", function () { ch.resize(); });
+      window.ETFBroad = {
+        updateHistory: function (next) {
+          B = next;
+          window.__BROAD = next;
+          CATS = B.legendOrder.filter(c => c !== "累计净流入");
+          const option = buildOption();
+          delete option.dataZoom;
+          ch.setOption(option);
+          const scrollLeft = document.getElementById("broadHeat").scrollLeft;
+          fillMeta();
+          renderHeat();
+          document.getElementById("broadHeat").scrollLeft = scrollLeft;
+        }
+      };
     }
   }
 
