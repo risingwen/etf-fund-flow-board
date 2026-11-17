@@ -10,6 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import data_quality as q
 from refresh_all import transaction,freshness
+from update_funds import complete_sz_shares
 
 
 class QualityTests(unittest.TestCase):
@@ -31,6 +32,15 @@ class QualityTests(unittest.TestCase):
         def change(x):
             for k in ('dates','amount','netflow','idx','nfCov','amtCov'):x['daily'][k].pop(-2)
         self.modified('data.js',change,lambda:q.check_calendar('daily',calendar))
+
+    def test_incomplete_share_report_is_refetched_by_day(self):
+        members={'158009':{'listed':'2026-08-06'}};days=['2026-11-16','2026-11-17']
+        with patch('update_funds.szse_shares',side_effect=[{(days[0],'158009'):10},{(days[1],'158009'):11}]) as source:
+            result=complete_sz_shares(members,days)
+            self.assertEqual(result[(days[1],'158009')],11)
+            self.assertEqual(source.call_args.args[1:],(days[1],days[1]))
+        with patch('update_funds.szse_shares',return_value={}):
+            with self.assertRaisesRegex(ValueError,'不填零'):complete_sz_shares(members,days)
 
     def test_missing_constituent_is_rejected(self):
         self.modified('funds.json',lambda x:x['funds'].pop('510300'),lambda:q.validate('funds'))

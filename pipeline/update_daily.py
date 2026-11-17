@@ -2,6 +2,7 @@
 import io
 import json
 import math
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -79,10 +80,11 @@ def nav_values(code, start, end):
         page += 1
 
 
-def szse_shares(basket, start, end):
+def szse_shares(basket, start, end, fresh=False):
     content = request("https://www.szse.cn/api/report/ShowReport", {
         "SHOWTYPE": "xlsx", "CATALOGID": "scsj_fund_jjgm", "TABKEY": "tab1",
         "txtStart": start, "txtEnd": end, "jjlb": "ETF",
+        **({'random':str(time.time())} if fresh else {}),
     }, "https://www.szse.cn/market/fund/volume/etf/index.html", binary=True)
     workbook = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
     try:

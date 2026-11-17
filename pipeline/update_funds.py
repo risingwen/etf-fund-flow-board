@@ -14,6 +14,23 @@ from corporate_actions import ACTIONS,share_factor,close_factor
 PATH=SITE/'funds.json'
 
 
+def complete_sz_shares(members,days):
+    codes={c for c in members if mkt(c)=='sz'}
+    shares=szse_shares(codes,days[0],days[-1],fresh=True)
+    # 区间 XLSX 可能被边缘缓存成不完整披露；按缺失日期重新请求官方单日报表。
+    for day in days:
+        expected={c for c in codes if members[c]['listed']<=day}
+        missing={c for c in expected if (day,c) not in shares}
+        if missing:
+            print(f'{day} 深市批量份额缺 {len(missing)} 只，按日复取',flush=True)
+            for _ in range(2):
+                shares.update(szse_shares(expected,day,day,fresh=True))
+                missing={c for c in expected if (day,c) not in shares}
+                if not missing:break
+        if missing:raise ValueError(f'{day} 深市官方份额仍缺 {len(missing)} 只：{sorted(missing)[:6]}，不填零')
+    return shares
+
+
 def universe():
     result={c:{**m,'groups':[m['category']],'kind':'宽基'} for c,m in read_members().items()}
     for g in read_json(SITE/'themes.json')['groups']:
@@ -35,7 +52,7 @@ def update():
     target=calendar[-23:] if not old['dates'] or new_codes else calendar[max(0,calendar.index(old['dates'][-1])-2):]
     # 每次重算最近三日，覆盖披露修订；首次至少有 20 日排名及其前一日份额。
     print(f'逐券档案：{len(members)} 只，{target[0]}—{target[-1]}',flush=True)
-    shares=szse_shares({c for c in members if mkt(c)=='sz'},target[0],target[-1])
+    shares=complete_sz_shares(members,target)
     cache=ROOT/'pipeline/cache/fund-shares';cache.mkdir(parents=True,exist_ok=True)
     def sh(day):
         path=cache/(day+'.json')
