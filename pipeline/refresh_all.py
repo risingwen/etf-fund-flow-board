@@ -28,13 +28,14 @@ def restore(saved):
         else:path.write_bytes(value)
 
 
-def transaction(name,collect,check_cross=True):
+def transaction(name,collect,check_cross=True,calendar=None):
     """文件级事务：采集或任何门禁失败，都恢复上一个可发布版本。"""
     saved=snapshot(q.MODULES[name]); previous=q.latest(name) if saved[q.MODULES[name][0]] else None
     stage='source'
     try:
         collect()
-        stage='validation';result=q.validate(name,previous)
+        stage='validation';result=q.validate(name,previous,check_universe=check_cross)
+        if calendar:q.check_calendar(name,calendar)
         if check_cross:q.cross_validate()
         return {'ok':True,'validation':result,'lastSuccessAt':stamp()}
     except Exception as error:
@@ -100,14 +101,15 @@ def main():
                                        capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=1500)
                     print(run.stdout[-5000:],flush=True)
                     if run.returncode:raise RuntimeError(script+'：'+(run.stderr or run.stdout).strip().splitlines()[-1][-550:])
-            status=transaction(name,collect,check_cross=False)
+            status=transaction(name,collect,check_cross=False,calendar=calendar)
             status['checkedAt']=stamp()
             if not status['ok']:print(f'[{name}] 拦截并保留旧数据：{status["error"]}',flush=True)
         else:
             status={k:v for k,v in previous.items() if k not in ('hashes','warnings','latest','expected','lag','freshness')}
             status.setdefault('ok',True);status.setdefault('checkedAt',stamp())
         # 对保留的文件也重新校验，损坏旧文件不能通过降级绕过门禁。
-        status['validation']=q.validate(name)
+        # 目录更新和逐券档案可能先后落盘，集合一致性在全批次结束后统一检查。
+        status['validation']=q.validate(name,check_universe=False)
         actual=q.latest(name)
         state[name]={**status,'lastSuccessAt':status.get('lastSuccessAt',previous.get('lastSuccessAt')),
                      'latest':actual,**freshness(name,actual,calendar,now),
@@ -119,7 +121,7 @@ def main():
         for name in related:
             s=state[name];s.update(ok=False,failureType='validation',error='跨模块对账失败，相关数据整体回滚：'+str(error)[:400])
             s['validation']=q.validate(name);s['latest']=q.latest(name);s['hashes']=q.hashes(name)
-            s.update(freshness(name,s['latest'],calendar,now));s['lastSuccessAt']=old.get('modules',{}).get(name,{}).get('lastSuccessAt')
+            s.update(freshness(name,s['latest'],calendar,now));s['warnings']=warnings(name);s['lastSuccessAt']=old.get('modules',{}).get(name,{}).get('lastSuccessAt')
         q.cross_validate()
     clean=not calendar_error and all(s['ok'] and (not s['lag'] or s['freshness']=='等待披露') for s in state.values())
     health={'version':1,'checkedAt':stamp(),'clean':clean,

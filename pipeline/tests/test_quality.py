@@ -26,8 +26,17 @@ class QualityTests(unittest.TestCase):
     def test_duplicate_date_is_rejected(self):
         self.modified('data.js',lambda x:x['daily']['dates'].__setitem__(-1,x['daily']['dates'][-2]),lambda:q.validate('daily'))
 
+    def test_missing_whole_day_is_rejected(self):
+        calendar=q.read('data-quality.json')['calendar']['dates']
+        def change(x):
+            for k in ('dates','amount','netflow','idx','nfCov','amtCov'):x['daily'][k].pop(-2)
+        self.modified('data.js',change,lambda:q.check_calendar('daily',calendar))
+
     def test_missing_constituent_is_rejected(self):
         self.modified('funds.json',lambda x:x['funds'].pop('510300'),lambda:q.validate('funds'))
+
+    def test_cross_module_gate_rejects_incomplete_directory_update(self):
+        self.modified('funds.json',lambda x:x['funds'].pop('510300'),q.cross_validate)
 
     def test_flow_cannot_change_without_shares(self):
         self.modified('funds.json',lambda x:x['funds']['510300']['daily'][-1].__setitem__('flow',99999),lambda:q.validate('funds'))

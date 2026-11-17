@@ -55,7 +55,7 @@ def latest(name):
     return x['dates'][-1]
 
 
-def validate(name,previous=None):
+def validate(name,previous=None,check_universe=True):
     x=read(MODULES[name][0]); points=0
     if name=='daily':
         d=x['daily'];dates(d['dates']);n=len(d['dates'])
@@ -123,7 +123,7 @@ def validate(name,previous=None):
         require(x.get('actions')==ACTIONS,'份额事件未纳入复算')
         with (ROOT/'reference/data/broad_members.csv').open(encoding='utf-8',newline='') as stream:expected_codes={r['code'] for r in csv.DictReader(stream)}
         expected_codes.update(m['code'] for g in read('themes.json')['groups'] for m in g['members'])
-        require(set(x['funds'])==expected_codes,'逐券档案与宽基/主题目录覆盖不一致')
+        if check_universe:require(set(x['funds'])==expected_codes,'逐券档案与宽基/主题目录覆盖不一致')
         for code,f in x['funds'].items():
             rows=f['daily'];dates([r['date'] for r in rows])
             expected=[d for d in x['dates'] if d>=f['listed']]
@@ -165,6 +165,7 @@ def cross_validate():
         if day>='2026-10-26' and day in archive['days']:
             require(abs(board['daily']['amount'][i]-archive['days'][day][-1])<.03,f'{day} 日成交额与分钟收盘额不一致')
     if not (SITE/'funds.json').exists():return
+    validate('funds')
     f=read('funds.json'); rows={c:{r['date']:r for r in v['daily']} for c,v in f['funds'].items()}
     basket=[r['code'] for r in board['meta']['basket']]
     for i,day in enumerate(board['daily']['dates']):
@@ -190,10 +191,21 @@ def hashes(name):
     return {p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in MODULES[name]}
 
 
+def check_calendar(name,calendar):
+    dates(calendar)
+    if name=='facts':return
+    x=read(MODULES[name][0]);require(latest(name)<=calendar[-1],f'{name} 日期领先已核实交易日历')
+    if name=='rotation':return  # 快照归档不冒充连续日度历史。
+    actual=x['daily']['dates'] if name=='daily' else x['calendar'] if name in ('minute','themes') else [r['date'] for r in x['daily']] if name in ('margin','leverage') else x['dates']
+    start=max(actual[0],calendar[0],'2026-10-26' if name in ('daily','broad') else '2000-01-01')
+    require([d for d in actual if d>=start]==[d for d in calendar if start<=d<=actual[-1]],f'{name} 存在漏掉的交易日或非交易日')
+
+
 def validate_release():
     health=read('data-quality.json')
     for name in MODULES:
         validate(name)
+        check_calendar(name,health['calendar']['dates'])
         require(health['modules'][name]['latest']==latest(name),f'{name} 健康报告日期与文件不一致')
         require(hashes(name)==health['modules'][name]['hashes'],f'{name} 文件已变更，尚未完成校验签署')
     cross_validate()
