@@ -9,7 +9,8 @@ SITE = Path(__file__).resolve().parents[1] / "site"
 def main():
     files = {name: hashlib.sha256((SITE / name).read_bytes()).hexdigest()
              for name in ("data.js", "broad.js", "minute-history.json", "etf-margin.json",
-                          "leverage.json", "themes.json", "market-status.json")}
+                          "leverage.json", "themes.json", "market-status.json", "funds.json",
+                          "fund-facts.json", "data-quality.json", "rotation.json")}
     version = hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
     manifest = {"version": version, "files": files}
     (SITE / "history-manifest.json").write_bytes(

@@ -13,6 +13,7 @@ from openpyxl import load_workbook
 
 from build_data import _sse_one, mkt
 from update_daily import EAST_ASIA, kline, nav_values, request, szse_shares
+from corporate_actions import share_factor
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "site/broad.js"
@@ -44,22 +45,8 @@ def catalogue(rules):
                 if index in mapping[market]:
                     raise ValueError(f"重复指数规则 {market} {index}")
                 mapping[market][index] = cat
-    payload = request("https://query.sse.com.cn/commonQuery.do", {
-        "sqlId": "COMMON_JJZWZ_JJLB_L", "CATEGORY": "F100", "type": "inParams",
-        "isPagination": "true", "pageHelp.pageNo": 1, "pageHelp.pageSize": 2000,
-    }, "https://etf.sse.com.cn/")
-    sh = payload["pageHelp"]["data"]
-    if not sh or len(sh) != int(payload["pageHelp"]["total"]):
-        raise ValueError("沪市 ETF 目录不完整")
-    sz = sz_report("fund_etf", ["证券代码", "证券简称", "拟合指数"])
-    sz_dates = {code: day for code, kind, day in sz_report("1000_lf", ["基金代码", "基金类别", "上市日期"])
-                if kind == "ETF"}
-    if len(sz) < 500 or len({r[0] for r in sz}) != len(sz):
-        raise ValueError("深市 ETF 目录不完整")
-    rows = [(r["FUND_CODE"], r["FUND_EXPANSION_ABBR"], r["INDEX_NAME"].replace(" ", ""),
-             r["LISTING_DATE"]) for r in sh]
-    rows.extend((code, name, index.split()[0] if index else "", sz_dates.get(code, ""))
-                for code, name, index in sz)
+    from update_themes import catalogue as full_catalogue
+    rows = [(r['code'],r['name'],r['benchmark'],r['listed']) for r in full_catalogue()]
     members = {}
     for code, name, index, listed in rows:
         category = mapping[mkt(code)].get(index)
@@ -116,7 +103,7 @@ def extend(board, members, days, allow_pending=False):
             # 首日没有相邻上市交易日，不把初始份额计作当日申购。
             if members[code]["listed"] > previous:
                 continue
-            delta = shares[day, code] - shares[previous, code]
+            delta = shares[day, code] - shares[previous, code]*share_factor(code,day)
             if delta:
                 changes[day][code] = delta
                 changed.add(code)
@@ -198,6 +185,11 @@ def main():
     if args.verify_latest:
         verify_latest(board, rules)
         return
+    # 与逐券档案保持修订窗口一致；从窗口前一日的累计额重新接续。
+    if len(board['dates'])>4 and board['dates'][-4]>='2026-10-26':
+        board['dates']=board['dates'][:-3];board['cumulative']=board['cumulative'][:-3]
+        board['byCategory']={c:v[:-3] for c,v in board['byCategory'].items()}
+        board['meta']['dateLast']=board['dates'][-1]
     yesterday = datetime.now(EAST_ASIA).date() - timedelta(days=1)
     end = min(yesterday, args.through or yesterday).isoformat()
     start = board["dates"][-1]

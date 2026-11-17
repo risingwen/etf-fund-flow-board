@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#132c38">
+<title>ETF 研究 · 排名与同指数比较</title><link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./research.css?v=20261117">
+<script defer src="./vendor/echarts/echarts.min.js"></script><script defer src="./verified-data.js?v=20261117"></script>
+<script defer src="./research.js?v=20261117"></script><script defer src="./data-health.js?v=20261117"></script>
+</head><body>
+<header class="masthead"><div class="mast-inner"><a class="brand" href="./"><img src="./favicon.svg" width="27" height="27" alt="">ETF 资金观测</a><a class="repo" href="./markets.html">主题与杠杆 ↗</a></div></header>
+<main class="wrap"><header class="intro"><h1>ETF 资金研究</h1><p>从多日资金方向，追到逐只基金的份额、净值与同指数比较。</p><p class="sub" id="researchStatus" role="status">正在读取经过校验的数据…</p></header>
+<div id="dataHealth" class="health" role="region" aria-label="数据健康状态">正在读取发布前校验记录…</div>
+<nav aria-label="ETF 研究导航"><a href="#rankings">多日排名</a><a href="#themeFlows">主题申赎</a><a href="#fundDetail">单只 ETF</a><a href="#rotation">行业概念</a><a href="./">宽基看板</a></nav>
+<section class="part" id="rankings"><h2>资金方向 · 多日排名</h2>
+<div class="research-filters"><label class="date-control">口径 <select id="rankScope"><option value="funds">逐只 ETF 净申赎</option><option value="broad">12 类宽基净申赎</option><option value="themes">13 类主题净申赎</option><option value="margin">逐只 ETF 融资净买入</option></select></label>
+<label class="date-control">窗口 <select id="rankPeriod"><option value="1">1 日</option><option value="3">3 日</option><option value="5" selected>5 日</option><option value="10">10 日</option><option value="20">20 日</option></select></label>
+<label class="date-control">顺序 <select id="rankOrder"><option value="desc">净流入从高到低</option><option value="asc">净流出从高到低</option></select></label>
+<label class="date-control">查找 <input id="rankSearch" type="search" placeholder="代码、名称或类别"></label></div>
+<p id="rankMeta" class="sub"></p><div id="rankTable" class="tscroll rank-table" tabindex="0"></div>
+<footer>净申赎＝份额变动 × 当日单位净值；融资净买入＝融资买入－偿还，两种口径不能相加。统一按显示窗口取交易日，缺少完整窗口的基金不参与排名。主题可重叠，类别相加不是全市场合计。</footer></section>
+<section class="part" id="themeFlows"><h2>13 类主题 · 日度净申赎</h2><p id="themeFlowMeta" class="sub"></p><div id="themeFlowTable" class="tscroll heat-table" tabindex="0"></div><footer>单位：亿元。红色为净申购、绿色为净赎回，颜色深浅按同一主题的绝对值比较；上市首日缺少前一上市日份额，不计作当日申购。<a href="./markets.html#themes">查看主题分时成交</a></footer></section>
+<section class="part" id="fundDetail"><div class="detail-title"><h2 id="fundName">单只 ETF</h2><span id="fundCode"></span></div>
+<div class="research-filters"><label class="date-control">基金 <input id="fundSearch" list="fundOptions" placeholder="输入代码或名称"><datalist id="fundOptions"></datalist></label><button id="openFund" type="button">查看</button></div>
+<p id="fundMeta" class="sub"></p><p id="fundActions" class="sub check-note" hidden></p><div id="fundMetrics" class="metrics"></div><p id="fundMissing" class="sub check-note" hidden></p>
+<div class="chart-wrap"><h3>净申赎与基金规模</h3><div id="fundChart" class="chart" role="img" aria-label="所选基金日度净申赎与基金规模"></div></div>
+<div class="chart-wrap" id="fundMarginWrap"><h3>融资余额与净买入</h3><div id="fundMarginChart" class="chart" role="img" aria-label="所选基金融资余额与净买入"></div></div>
+<h3>同指数 ETF 比较</h3><p id="peerMeta" class="sub"></p><div id="peerTable" class="tscroll peer-scroll" tabindex="0"></div>
+<details><summary>逐日复算明细</summary><div id="fundDaily" class="tscroll rank-table" tabindex="0"></div></details>
+<footer>份额单位为亿份，金额为亿元。净申赎先扣除公告已核实的拆分份额。收盘折溢价按同日收盘价与单位净值计算，遇日终拆分先对齐份额单位，不能当作盘中 IOPV。费率为年费率，展示的是公开资料最近核对值，不代表基金全部成本。净值、行情或费率缺失均显示“—”。同指数比较仅涵盖本看板收录基金，不构成推荐。</footer></section>
+<section class="part" id="rotation"><h2>行业与概念 · 融资方向</h2><div class="research-filters">
+<label class="date-control">类型 <select id="rotationKind"><option value="industry">行业</option><option value="concept">概念</option></select></label>
+<label class="date-control">窗口 <select id="rotationPeriod"><option value="1">1 日</option><option value="3">3 日</option><option value="5" selected>5 日</option><option value="10">10 日</option><option value="20">20 日</option></select></label>
+<label class="date-control">归档日 <select id="rotationDate"></select></label><label class="date-control">查找 <input id="rotationSearch" type="search" placeholder="行业或概念名称"></label></div>
+<p id="rotationMeta" class="sub"></p><div id="rotationTable" class="tscroll rank-table" tabindex="0"></div><footer>东方财富行业 / 概念分类，板块可能重叠，不直接加总。每行显示实际统计截止日；部分停用分类可能较旧。窗口为源站滚动区间，快照从本次采集起逐日归档。</footer></section>
+<p class="footnote">数据来源：沪深交易所份额和两融披露、东方财富净值和基金资料、通达信未复权日线。公开数据校验通过不代表上游绝无错误。所有时间均为北京时间。</p>
+</main></body></html>

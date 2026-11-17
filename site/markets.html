@@ -5,8 +5,11 @@
   <meta name="theme-color" content="#132c38"><title>主题与杠杆资金 · ETF 资金观测</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./markets.css?v=20261115">
+  <link rel="stylesheet" href="./research.css?v=20261117">
   <script defer src="./vendor/echarts/echarts.min.js"></script>
   <script defer src="./markets.js?v=20261115"></script>
+  <script defer src="./verified-data.js?v=20261117"></script>
+  <script defer src="./data-health.js?v=20261117"></script>
 </head>
 <body>
   <header class="masthead"><div class="mast-inner"><a class="brand" href="./"><img src="./favicon.svg" width="27" height="27" alt="">ETF 资金观测</a><a class="repo" href="./">宽基主看板 ↗</a></div></header>
@@ -14,7 +17,8 @@
     <header class="intro"><p class="eyebrow">主题交易 · 融资融券 · 市场杠杆</p><h1>主题与杠杆资金</h1>
       <p>从主题 ETF 成交到融资交易，用公开数据观察资金的不同侧面。</p>
       <p class="sub" id="marketUpdate" role="status">正在读取经过校验的数据…</p></header>
-    <nav aria-label="资金看板导航"><a href="#themes">13 类主题分时</a><a href="#margin">ETF 两融</a><a href="#leverage">杠杆资金</a><a href="./">宽基看板</a></nav>
+    <div id="dataHealth" class="health" role="region" aria-label="数据健康状态">正在读取发布前校验记录…</div>
+    <nav aria-label="资金看板导航"><a href="#themes">13 类主题分时</a><a href="#margin">ETF 两融</a><a href="#leverage">杠杆资金</a><a href="./research.html">ETF 研究 ↗</a><a href="./">宽基看板</a></nav>
     <noscript>请启用 JavaScript 以查看图表。</noscript>
     <section class="part" id="themes">
       <div class="section-head"><h2>13 类主题分时</h2><button id="themeRefresh">刷新所选主题行情</button></div>

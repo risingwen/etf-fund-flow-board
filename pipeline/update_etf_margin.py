@@ -14,7 +14,7 @@ def update():
     if set(m['category'] for m in members.values()) != set(CATEGORIES):
         raise ValueError('ETF 两融分类缺失')
     codes = sorted(members)
-    start = overlap(old.get('daily', []), '2026-01-01')
+    start = overlap(old.get('daily', []), '2026-01-01') if old.get('details') else '2026-01-01'
     summaries = report('RPTA_WEB_RZRQ_LSSH', 'DIM_DATE,SCDM',
                        f'(DIM_DATE>=\'{start}\')(SCDM in ("007","001"))', 'DIM_DATE,SCDM')
     markets = defaultdict(set)
@@ -56,7 +56,12 @@ def update():
     import json
     broad = json.loads((SITE/'broad.js').read_text(encoding='utf-8').removeprefix('window.__BROAD = ').strip().removesuffix(';'))
     flow = [{'date':d, **{c:broad['byCategory'][c][i] for c in CATEGORIES}} for i,d in enumerate(broad['dates'])]
-    result = {'version':1,'updatedAt':stamp(),'categories':CATEGORIES,'daily':daily,'flow':flow,
+    details = dict(old.get('details', {}))
+    for code in codes:
+        records = [{'date':day, **{k:numeric(values[code][f],YI) for k,f in fields.items()}}
+                   for day,values in sorted(grouped.items()) if code in values]
+        if records:details[code] = merge(details.get(code,[]),records)
+    result = {'version':1,'updatedAt':stamp(),'categories':CATEGORIES,'daily':daily,'flow':flow,'details':details,
               'members':list(members.values()), 'reportedCodes':sorted(grouped[complete[-1]]),
               'source':'东方财富逐券两融明细；沪深交易所 ETF 目录分类',
               'note':'两融仅加总有公开记录的标的 ETF；日度净申赎为该类全部 ETF，二者成分范围不同。'}

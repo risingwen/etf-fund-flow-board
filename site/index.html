@@ -7,6 +7,7 @@
   <title>重点 ETF 资金看板</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./research.css?v=20261117">
   <script defer src="./vendor/echarts/echarts.min.js"></script>
   <script defer src="./data.js"></script>
   <script defer src="./broad.js"></script>
@@ -15,6 +16,8 @@
   <script defer src="./app.js?v=20261115"></script>
   <script defer src="./broad-chart.js?v=20261115"></script>
   <script defer src="./history-refresh.js?v=20261115"></script>
+  <script defer src="./verified-data.js?v=20261117"></script>
+  <script defer src="./data-health.js?v=20261117"></script>
 </head>
 <body>
   <header class="masthead"><div class="mast-inner">
@@ -27,12 +30,13 @@
       <p>跟踪 20 只宽基 ETF 的盘中成交、日度申赎和历史资金流向。</p>
       <p class="sub" id="historyUpdate" role="status">正在检查历史数据更新…</p>
     </header>
+    <div id="dataHealth" class="health" role="region" aria-label="数据健康状态">正在读取发布前校验记录…</div>
     <div class="metrics">
       <div><h2>盘中累计成交额</h2><p><strong id="summaryAmount">—</strong> 亿元</p><small id="amountTime">待读取</small></div>
       <div><h2>上证综指</h2><p><strong id="summaryIndex">—</strong> 点</p><small id="indexTime">待读取</small></div>
       <div><h2>最近披露净流入</h2><p><strong id="summaryFlow">—</strong> 亿元</p><small id="flowTime">待读取</small></div>
     </div>
-    <nav aria-label="看板导航"><a href="#part1">盘中行情</a><a href="#part2">托底信号</a><a href="#part3">日度全景</a><a href="#broad">宽基分类</a><a href="./markets.html">主题与两融 ↗</a></nav>
+    <nav aria-label="看板导航"><a href="#part1">盘中行情</a><a href="#part2">托底信号</a><a href="#part3">日度全景</a><a href="#broad">宽基分类</a><a href="./markets.html">主题与两融 ↗</a><a href="./research.html">ETF 研究 ↗</a></nav>
     <noscript>请启用 JavaScript 以查看图表和数据。</noscript>
     <section class="part" id="part1">
       <div class="section-head"><h2>盘中行情</h2><div class="controls"><button id="btnRefresh" type="button">刷新行情</button><button class="secondary" id="btnPause" type="button" aria-pressed="false">暂停自动刷新</button></div></div>

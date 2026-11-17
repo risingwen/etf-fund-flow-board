@@ -33,10 +33,16 @@ def main():
     finally:
         book.close()
     audit=[]
+    expected = {m['code'] for m in board['members']} & set(official)
+    assert expected == set(codes), f'交易所标的覆盖差异：缺少 {sorted(expected-set(codes))}，多出 {sorted(set(codes)-expected)}'
     for code in codes:
         assert code in official and code in em, f'{code} 交易所或行情源缺记录'
         diff={key:em[code][field]-official[code][key] for key,field in [('balance','RZYE'),('buy','RZMRE')]}
         assert all(abs(v)<1 for v in diff.values()), f'{code} 两源数值不符 {diff}'
+        detail=board['details'][code][-1]
+        assert detail['date']==day
+        for key in ('balance','buy'):
+            assert abs(detail[key]*1e8-official[code][key])<101, f'{code} 发布明细与官方披露不符'
         audit.append({'code':code,'balanceYuan':official[code]['balance'],'buyYuan':official[code]['buy'],'differenceYuan':diff})
     result={'checkedAt':stamp(),'date':day,'count':len(audit),'rows':audit,
             'sources':['https://www.sse.com.cn/market/othersdata/margin/detail/','https://www.szse.cn/disclosure/margin/margin/index.html','https://data.eastmoney.com/rzrq/']}

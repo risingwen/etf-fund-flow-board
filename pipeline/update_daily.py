@@ -10,6 +10,7 @@ import requests
 from openpyxl import load_workbook
 
 from build_data import UA, _sse_one, mkt, retry
+from corporate_actions import share_factor
 
 DATA_FILE = Path(__file__).resolve().parents[1] / "site" / "data.js"
 PREFIX = "window.__DATA = "
@@ -34,11 +35,21 @@ def number(value):
 
 
 def kline(secid, start, end):
-    payload = request("https://push2his.eastmoney.com/api/qt/stock/kline/get", {
+    params = {
         "secid": secid, "klt": 101, "fqt": 0, "beg": start.replace("-", ""),
         "end": end.replace("-", ""), "fields1": "f1,f2,f3,f4,f5,f6",
         "fields2": "f51,f52,f53,f54,f55,f56,f57",
-    }, "https://quote.eastmoney.com/")
+    }
+    try:
+        response = requests.get('https://push2his.eastmoney.com/api/qt/stock/kline/get',
+                                params=params,headers={**UA,'Referer':'https://quote.eastmoney.com/'},timeout=(5,10))
+        response.raise_for_status()
+        payload = response.json()
+        if not payload.get('data'):
+            raise ValueError('日线源返回空对象')
+    except (requests.RequestException, ValueError):
+        from public_quotes import tdx_daily
+        return tdx_daily(secid,start,end)
     data = payload["data"]
     if data["code"] != secid.split(".")[1]:
         raise ValueError(f"{secid} 行情代码不匹配")
@@ -131,7 +142,7 @@ def update(board, end):
                 raise ValueError(f"{day} 长期缺失，须检查上游数据")
             break
         amount = round(sum(prices[day][1] for prices, _ in funds.values()) / 1e8, 2)
-        flow = round(sum((shares[day, c] - shares[prev, c]) * navs[day]
+        flow = round(sum((shares[day, c] - shares[prev, c]*share_factor(c,day)) * navs[day]
                          for c, (_, navs) in funds.items()) / 1e8, 2)
         row = {"date": day, "amount": amount, "netflow": flow}
         for key, value in (("dates", day), ("amount", amount), ("netflow", flow),
@@ -150,6 +161,12 @@ def main():
     if not text.startswith(PREFIX):
         raise ValueError("无法识别 data.js")
     board = json.loads(text[len(PREFIX):].removesuffix(";"))
+    # 重取最近三个交易日，捕获份额/净值修订；候选写入后仍须通过统一门禁。
+    if len(board['daily']['dates'])>4 and board['daily']['dates'][-4]>='2026-10-26':
+        for key in ('dates','amount','netflow','idx','nfCov','amtCov'):board['daily'][key]=board['daily'][key][:-3]
+        anchor=board['daily']['dates'][-1];board['meta']['latestDay']=anchor
+        board['support']=[r for r in board['support'] if r['date']<=anchor]
+        board['recent']=[{'date':d,'amount':a,'netflow':n} for d,a,n in zip(board['daily']['dates'],board['daily']['amount'],board['daily']['netflow'])][-4:]
     # 深交所 T 日份额可能盘后修订，最多只使用北京时间昨天的数据。
     end = (datetime.now(EAST_ASIA).date() - timedelta(days=1)).isoformat()
     count = 0
@@ -160,7 +177,7 @@ def main():
     if count:
         target = DATA_FILE.with_suffix(".tmp")
         target.write_text(PREFIX + json.dumps(board, ensure_ascii=False, allow_nan=False) + ";\n",
-                          encoding="utf-8")
+                          encoding="utf-8", newline="\n")
         target.replace(DATA_FILE)
     print(f"新增 {count} 个交易日，日度数据截至 {board['meta']['latestDay']}")
 

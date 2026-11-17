@@ -16,7 +16,7 @@ TIMES = [f'{h:02}:{m:02}' for h in range(9,16) for m in range(0,60,5)
          if '09:35' <= f'{h:02}:{m:02}' <= '11:30' or '13:05' <= f'{h:02}:{m:02}' <= '15:00']
 
 
-def catalogue():
+def _catalogue():
     sh = request('https://query.sse.com.cn/commonQuery.do', {
         'sqlId':'COMMON_JJZWZ_JJLB_L','CATEGORY':'F100','type':'inParams',
         'isPagination':'true','pageHelp.pageNo':1,'pageHelp.pageSize':2000}, 'https://etf.sse.com.cn/')['pageHelp']
@@ -24,12 +24,17 @@ def catalogue():
         raise ValueError('沪市 ETF 目录不完整')
     sz = sz_report('fund_etf',['证券代码','证券简称','拟合指数'])
     listed = {c:d for c,k,d in sz_report('1000_lf',['基金代码','基金类别','上市日期']) if k == 'ETF'}
-    rows = [{'code':r['FUND_CODE'],'name':r['FUND_EXPANSION_ABBR'],'benchmark':r['INDEX_NAME'].split()[0],
+    rows = [{'code':r['FUND_CODE'],'name':r['FUND_EXPANSION_ABBR'],'benchmark':''.join(r['INDEX_NAME'].split()),
              'listed':r['LISTING_DATE'][:10]} for r in sh['data']]
     rows.extend({'code':c,'name':n,'benchmark':b.split()[0] if b else '', 'listed':listed[c][:10]} for c,n,b in sz)
     if len(rows) != len({r['code'] for r in rows}) or len(sz) < 500:
         raise ValueError('ETF 目录缺失或重复')
     return rows
+
+
+def catalogue():
+    from catalogue_cache import cached_catalogue
+    return cached_catalogue(_catalogue)
 
 
 def tdx_history(code, first, last):
