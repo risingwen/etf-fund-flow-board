@@ -1,0 +1,129 @@
+/* ============================================================
+   增强层：宽屏利用率、加载态、表格排序指示、回到顶部
+   只做叠加，不覆盖原有视觉语义
+   ============================================================ */
+
+/* 1) 宽屏：把 1120 的容器放宽，减少大屏两侧空白 */
+@media (min-width: 1280px) {
+  .mast-inner, .wrap { max-width: 1360px; }
+  .chart { height: 340px; }
+  .chart.tall { height: 380px; }
+  .chart.broad { height: 440px; }
+}
+@media (min-width: 1680px) {
+  .mast-inner, .wrap { max-width: 1560px; }
+}
+
+/* 2) 图表加载占位：ECharts 初始化前容器为空，用它顶上 */
+.chart:empty::before {
+  content: "图表加载中…";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #9aa9ad;
+  font-size: 13px;
+  letter-spacing: .04em;
+}
+.chart:empty::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: 26px 0 0 -11px;
+  border: 2px solid #dbe5e6;
+  border-top-color: var(--teal, #186453);
+  border-radius: 50%;
+  animation: enhSpin .8s linear infinite;
+}
+.chart { position: relative; }
+@keyframes enhSpin { to { transform: rotate(360deg); } }
+
+/* 3) 可排序表头 */
+table thead th[data-sortable] { cursor: pointer; user-select: none; }
+table thead th[data-sortable]:hover { background: #e4ecee; }
+table thead th[data-sort]::after {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 5px;
+  vertical-align: middle;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  opacity: .55;
+}
+table thead th[data-sort="asc"]::after { border-bottom: 5px solid currentColor; }
+table thead th[data-sort="desc"]::after { border-top: 5px solid currentColor; }
+
+/* 4) 回到顶部 */
+.enh-top {
+  position: fixed;
+  right: 22px;
+  bottom: 26px;
+  z-index: 30;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid #afbfc0;
+  background: #ffffff;
+  color: var(--teal, #186453);
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: 0 4px 14px rgba(19, 44, 56, .12);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+.enh-top.show { opacity: 1; transform: none; pointer-events: auto; }
+@media (max-width: 600px) {
+  .enh-top { right: 14px; bottom: 16px; width: 36px; height: 36px; }
+}
+
+/* 5) 历史分钟：日期前后切换按钮 */
+.enh-nav-btn {
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .enh-nav-btn { padding: 6px 8px; font-size: 14px; }
+}
+
+/* 6) 托底信号汇总卡 */
+.enh-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0 2px;
+}
+.enh-kpis > div {
+  border: 1px solid var(--line, #d7e1e3);
+  border-radius: 8px;
+  padding: 10px 13px;
+  background: #fafcfc;
+}
+.enh-kpis h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted, #506474);
+}
+.enh-kpis p { margin: 3px 0 0; }
+.enh-kpis strong {
+  font-size: 20px;
+  font-weight: 620;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+.enh-kpis small { font-size: 11.5px; color: var(--muted, #506474); }
+@media (max-width: 600px) {
+  .enh-kpis { grid-template-columns: 1fr; gap: 6px; }
+  .enh-kpis > div { padding: 8px 11px; }
+  .enh-kpis strong { font-size: 17px; }
+}
