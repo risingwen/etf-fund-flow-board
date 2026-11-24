@@ -1,1 +1,1 @@
-{"version":1,"checkedAt":"2026-11-24T10:11:32+08:00","modules":{"themes":{"ok":false,"error":"跨模块对账失败，相关数据整体回滚：逐券档案与宽基/主题目录覆盖不一致"},"margin":{"ok":true,"error":null},"leverage":{"ok":true,"error":null}}}
+{"version":1,"checkedAt":"2026-11-24T17:19:37+08:00","modules":{"themes":{"ok":false,"error":"跨模块对账失败，相关数据整体回滚：逐券档案与宽基/主题目录覆盖不一致"},"margin":{"ok":true,"error":null},"leverage":{"ok":true,"error":null}}}
