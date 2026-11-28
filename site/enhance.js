@@ -112,7 +112,7 @@
       var thead = table.tHead;
       if (!thead || !table.tBodies[0]) return;
       Array.prototype.forEach.call(thead.rows[0].cells, function (th) {
-        if (th.colSpan > 1 || th.hasAttribute("data-sortable")) return;
+        if (th.hasAttribute("data-no-sort") || th.colSpan > 1 || th.hasAttribute("data-sortable")) return;
         th.setAttribute("data-sortable", "1");
         th.setAttribute("title", (th.innerText || "").trim() + " · 点击排序");
       });

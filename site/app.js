@@ -73,7 +73,28 @@
     charts.forEach(c => c.resize());
   });
 
-  function renderTable(table) {
+  function priceTrend(prices) {
+    const valid = (prices || []).filter(Number.isFinite);
+    if (!valid.length) return "暂无分时";
+    const low = Math.min(...valid), high = Math.max(...valid);
+    let path = "", start = true;
+    prices.forEach((price, i) => {
+      if (!Number.isFinite(price)) {
+        start = true;
+        return;
+      }
+      const x = 2 + i * 92 / (SLOTS.length - 1);
+      const y = high === low ? 12 : 22 - 20 * (price - low) / (high - low);
+      path += (start ? "M" : "L") + x.toFixed(2) + " " + y.toFixed(2);
+      // 单分钟或缺口后的首个点也可见。
+      if (start) path += "h0.01";
+      start = false;
+    });
+    return '<svg width="96" height="24" viewBox="0 0 96 24" role="img" aria-label="分钟价格走势">' +
+      '<path d="' + path + '" fill="none" stroke="currentColor" stroke-linecap="round"/></svg>';
+  }
+
+  function renderTable(table, stamp) {
     var total = table.reduce(function (s, r) { return s + (r.amount || 0); }, 0);
     var max = Math.max.apply(null, table.map(function (r) { return r.amount || 0; }));
     $("etfTable").innerHTML = table.map(function (r) {
@@ -83,10 +104,10 @@
       var w = max ? (r.amount / max * 100).toFixed(1) : 0;
       return "<tr><td>" + r.code + "</td><td>" + r.name + "</td>" +
         "<td class='num'><div class='bar-bg' style='width:" + w + "%'></div><span class='v'>" + fmt(r.amount) + "</span></td>" +
-        "<td class='num'>" + share + "</td><td class='num " + cls + "'>" + pct + "</td></tr>";
+        "<td class='num'>" + share + "</td><td class='num " + cls + "'>" + pct + "</td><td title='" + stamp + "'>" + priceTrend(r.prices) + "</td></tr>";
     }).join("");
   }
-  renderTable(D.init.table);
+  renderTable(D.init.table, D.init.date);
   $("tagUpdate").textContent = "静态数据生成于 " + D.meta.generated;
 
   let paused = false, loading = false;
@@ -105,12 +126,12 @@
     $("btnRefresh").disabled = true;
     $("tagUpdate").textContent = "正在读取分钟行情…";
     try {
-      const live = await ETFQuotes.load(BASKET, SLOTS);
+      const live = await ETFQuotes.load(BASKET, SLOTS, {includeTrends: true});
       const stamp = live.date + " " + live.time;
       if (stamp < displayed) throw new Error("行情时间早于当前画面");
       chMin.setOption(minuteOption(live.bars, live.closes, live.preClose), true);
       updateComparison.updateLive(live);
-      renderTable(live.table);
+      renderTable(live.table, stamp);
       const i = SLOTS.indexOf(live.time);
       summary(live.cum.today[i], live.closes[i], stamp);
       displayed = stamp;
@@ -203,7 +224,7 @@
       if (i >= 0 && stamp > displayed) {
         chMin.setOption(minuteOption(next.init.bars, next.init.closes, next.init.preClose), true);
         updateComparison.updateLive({date: next.init.date, cum: next.cum});
-        renderTable(next.init.table);
+        renderTable(next.init.table, stamp);
         summary(next.cum.today[i], next.init.closes[i], stamp);
         displayed = stamp;
         $("tagDate").textContent = "分钟行情 · " + stamp;

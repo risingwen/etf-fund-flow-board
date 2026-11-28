@@ -38,7 +38,7 @@ globalThis.ETFQuotes = (() => {
     });
   }
 
-  async function load(basket, times) {
+  async function load(basket, times, {includeTrends = false} = {}) {
     const symbols = basket.map(({code}) => (/^[56]/.test(code) ? "sh" : "sz") + code);
     const results = await Promise.allSettled(["sh000001", ...symbols].map(fetchDays));
     const failures = results.filter(result => result.status === "rejected").length;
@@ -69,7 +69,10 @@ globalThis.ETFQuotes = (() => {
     const peak = deviations.length ? Math.max(...deviations) : null;
     const table = basket.map((item, i) => {
       const day = funds[i].get(date), point = day.quotes.get(time);
-      return {...item, amount: point.amount / YI, price: point.price,
+      const trend = includeTrends ? {
+        prices: times.slice(0, last + 1).map(slot => day.quotes.get(slot)?.price ?? null)
+      } : {};
+      return {...item, ...trend, amount: point.amount / YI, price: point.price,
         pct: day.prev > 0 ? (point.price / day.prev - 1) * 100 : null};
     }).sort((a, b) => b.amount - a.amount);
     return {date, time, bars, closes, preClose: indexDay.prev, table,
