@@ -5,6 +5,12 @@
 (function () {
   "use strict";
 
+  // 等业务脚本绑定 toggle 后再展开，首次显示时两张图即可初始化。
+  document.addEventListener("DOMContentLoaded", function () {
+    var samples = document.querySelector("details.samples");
+    if (samples) samples.open = true;
+  });
+
   /* ---------- 1. 图表增强：导出 PNG + 十字准星 ---------- */
   function patchECharts() {
     if (!window.echarts || window.echarts.__enhanced) return;
